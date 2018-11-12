@@ -6,5 +6,6 @@
 (check-equal? (takeStep 0 0 0) (cons -1 0) "One step left")
 (check-equal? (spiral 1) (list (cons 0 0)) "this is nonsense")
 (check-equal? (spiral 4) (list (cons 0 0) (cons 1 0) (cons 1 1) (cons 0 1)) "this is nonsense")
+(check-equal? (list-ref (spiral 25) 24) (cons 2 -2) "25th element in example")
 
 
