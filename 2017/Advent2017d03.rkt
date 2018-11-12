@@ -1,6 +1,6 @@
 #lang racket/base
 
-(provide takeStep nextSegment spiral0 spiral)
+(provide takeStep nextSegment spiral0 spiral squareXY squareDistance)
 ;;; okay so the spiral0 goes
 ;;; 1 right, 1 up
 ;;; 2 left, 2 down
@@ -44,3 +44,11 @@
 )
 
 (define (spiral totalLength) (spiral0 0 0 2 1 1 totalLength))
+
+(define (squareXY squareID) (list-ref (spiral squareID) (- squareID 1)))
+
+(define (squareDistance squareID)
+  (let ([coords (squareXY squareID)])
+    (+ (abs (car coords)) (abs (cdr coords)))
+  )
+)
