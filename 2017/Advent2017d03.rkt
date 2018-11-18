@@ -74,8 +74,14 @@
          (match (takeStep x y newDirection) [(cons newX newY)
            (let ([newValue (newSquareValue newX newY squareValues)])
              (let ([newMax (max newValue maxValue)]
-                   [newValues (hash-set squareValues (cons newX newY) newValue)])
-               (spiral0 (spiralState newX newY newDirection newLeft newLength (cons (cons newX newY) path) newMax newValues (+ totalSteps 1)) termPred)
+                   [newValues (hash-set squareValues
+                                (cons newX newY) newValue)]
+                  )
+               (spiral0
+                 (spiralState newX newY newDirection newLeft newLength
+                   (cons (cons newX newY) path) newMax newValues
+                   (+ totalSteps 1))
+                 termPred)
              )
            )
          ])
