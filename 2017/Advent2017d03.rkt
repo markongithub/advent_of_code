@@ -1,7 +1,7 @@
 #lang racket/base
 (require racket/match)
 
-(provide takeStep turnLeft spiralState initialSV initialState squareXY squareDistance spiralA spiralB nextVector spiralState-maxValue day3Problem2 spiralOfLength)
+(provide takeStep spiralState initialSV squareXY squareDistance day3Problem2 spiralOfLength)
 ;;; okay so the spiral0 goes
 ;;; 1 right, 1 up
 ;;; 2 left, 2 down
@@ -77,50 +77,7 @@
   (apply + (neighborValues x y squareValues))
 )
 
-(define (spiralA0 state totalLeft)
-  (if (= totalLeft 0) state
-    (match state
-      [(spiralState x y direction leftInSegment segmentLength path maxValue squareValues totalSteps)
-       (match (nextVector state) [(list newDirection newLeft newLength)
-         (match (takeStep x y newDirection) [(cons newX newY)
-           (let ([newValue (newSquareValue newX newY squareValues)])
-             (let ([newMax (max newValue maxValue)]
-                   [newValues (hash-set squareValues (cons newX newY) newValue)])
-               (spiralA0 (spiralState newX newY newDirection newLeft newLength (cons (cons newX newY) path) newMax newValues (+ totalSteps 1)) (- totalLeft 1))
-             )
-           )
-         ])
-       ])
-      ]
-    )
-  )
-)
-
-(define (spiralA totalLeft) (spiralA0 initialState (- totalLeft 1)))
-
-(define (spiralB0 state minValue)
-  (match state
-    [(spiralState x y direction leftInSegment segmentLength path maxValue squareValues totalSteps)
-     (if (> maxValue minValue) state
-       (match (nextVector state) [(list newDirection newLeft newLength)
-         (match (takeStep x y newDirection) [(cons newX newY)
-           (let ([newValue (newSquareValue newX newY squareValues)])
-             (let ([newMax (max newValue maxValue)]
-                   [newValues (hash-set squareValues (cons newX newY) newValue)])
-               (spiralB0 (spiralState newX newY newDirection newLeft newLength (cons (cons newX newY) path) newMax newValues (+ totalSteps 1)) minValue)
-             )
-           )
-         ])
-       ])
-     )
-    ]
-  )
-)
-
-(define (spiralB minValue) (spiralB0 initialState minValue))
-
-
-(define (spiralC0 state termPred)
+(define (spiral0 state termPred)
   (match state
     [(spiralState x y direction leftInSegment segmentLength path maxValue squareValues totalSteps)
      (if (termPred state) state
@@ -129,7 +86,7 @@
            (let ([newValue (newSquareValue newX newY squareValues)])
              (let ([newMax (max newValue maxValue)]
                    [newValues (hash-set squareValues (cons newX newY) newValue)])
-               (spiralC0 (spiralState newX newY newDirection newLeft newLength (cons (cons newX newY) path) newMax newValues (+ totalSteps 1)) termPred)
+               (spiral0 (spiralState newX newY newDirection newLeft newLength (cons (cons newX newY) path) newMax newValues (+ totalSteps 1)) termPred)
              )
            )
          ])
@@ -139,9 +96,9 @@
   )
 )
 
-(define (spiralOfLength steps) (spiralC0 initialState (lambda (state) (>= (spiralState-totalSteps state) steps))))
+(define (spiralOfLength steps) (spiral0 initialState (lambda (state) (>= (spiralState-totalSteps state) steps))))
 
-(define (spiralUntilMinValue minValue) (spiralC0 initialState (lambda (state) (> (spiralState-maxValue state) minValue))))
+(define (spiralUntilMinValue minValue) (spiral0 initialState (lambda (state) (> (spiralState-maxValue state) minValue))))
 
 
 (define day3Problem2 (spiralState-maxValue (spiralUntilMinValue 361527)))
