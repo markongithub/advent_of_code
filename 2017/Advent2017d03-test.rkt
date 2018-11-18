@@ -9,6 +9,6 @@
 (check-equal? 3 (squareDistance 12) "distance 12")
 (check-equal? 2 (squareDistance 23) "distance 23")
 (check-equal? 31 (squareDistance 1024) "distance 1024")
-(check-equal? 326 (squareDistance 361527) "distance 361527")
+(check-equal? day3Problem1 326 "distance 361527")
 (check-equal? (spiralOfLength 1) (spiralState 0 0 2 1 1 (list (cons 0 0)) 0 initialSV 1) "this is nonsense")
 (check-equal? day3Problem2 363010 "answer part 2")

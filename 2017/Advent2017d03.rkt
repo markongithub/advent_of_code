@@ -1,7 +1,7 @@
 #lang racket/base
 (require racket/match)
 
-(provide takeStep spiralState initialSV squareXY squareDistance day3Problem2 spiralOfLength)
+(provide takeStep spiralState initialSV squareXY squareDistance day3Problem1 day3Problem2 spiralOfLength)
 ;;; okay so the spiral0 goes
 ;;; 1 right, 1 up
 ;;; 2 left, 2 down
@@ -31,17 +31,6 @@
 (define initialSV (hash (cons 0 0) 1))
 
 (define initialState (spiralState 0 0 2 1 1 (list (cons 0 0)) 0 initialSV 1))
-
-(define (squareXY squareID)
-  ;; The path is backwards so we always want the first one
-  (car (spiralState-path (spiralOfLength squareID)))
-)
-
-(define (squareDistance squareID)
-  (let ([coords (squareXY squareID)])
-    (+ (abs (car coords)) (abs (cdr coords)))
-  )
-)
 
 (define (nextVector state)
   (match state
@@ -98,7 +87,19 @@
 
 (define (spiralOfLength steps) (spiral0 initialState (lambda (state) (>= (spiralState-totalSteps state) steps))))
 
-(define (spiralUntilMinValue minValue) (spiral0 initialState (lambda (state) (> (spiralState-maxValue state) minValue))))
+(define (squareXY squareID)
+  ;; The path is backwards so we always want the first one
+  (car (spiralState-path (spiralOfLength squareID)))
+)
 
+(define (squareDistance squareID)
+  (let ([coords (squareXY squareID)])
+    (+ (abs (car coords)) (abs (cdr coords)))
+  )
+)
+
+(define day3Problem1 (squareDistance 361527))
+
+(define (spiralUntilMinValue minValue) (spiral0 initialState (lambda (state) (> (spiralState-maxValue state) minValue))))
 
 (define day3Problem2 (spiralState-maxValue (spiralUntilMinValue 361527)))
