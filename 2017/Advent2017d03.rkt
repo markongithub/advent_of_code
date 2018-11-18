@@ -1,7 +1,7 @@
 #lang racket/base
 (require racket/match)
 
-(provide takeStep turnLeft spiralState initialSV initialState spiral0 spiral squareXY squareDistance spiralA spiralB nextVector spiralState-maxValue day3Problem2 spiralOfLength)
+(provide takeStep turnLeft spiralState initialSV initialState squareXY squareDistance spiralA spiralB nextVector spiralState-maxValue day3Problem2 spiralOfLength)
 ;;; okay so the spiral0 goes
 ;;; 1 right, 1 up
 ;;; 2 left, 2 down
@@ -32,28 +32,10 @@
 
 (define initialState (spiralState 0 0 2 1 1 (list (cons 0 0)) 0 initialSV 1))
 
-(define (spiral0 x y direction leftInSegment segmentLength totalLeft)
-  (if (= totalLeft 1) (list (cons x y))
-    ;;; ok we need to take a step but first we need to know if it's time
-    ;;; to change direction
-    (let ([newSegment
-      ;;; a list of direction, leftInSegment, segmentLength
-      (if (> leftInSegment 0) (list direction (- leftInSegment 1) segmentLength)
-        (let ([nextSegResult (turnLeft segmentLength direction)])
-          (let ([nextSegLength (car nextSegResult)])
-            (list (cdr nextSegResult) (- nextSegLength 1) nextSegLength)
-          )
-        )
-     )]) (let ([nextCoords (takeStep x y (car newSegment))])
-       (cons (cons x y) (spiral0 (car nextCoords) (cdr nextCoords) (car newSegment) (car (cdr newSegment)) (car (cdr (cdr newSegment))) (- totalLeft 1) ))
-      )
-   )
-  )
+(define (squareXY squareID)
+  ;; The path is backwards so we always want the first one
+  (car (spiralState-path (spiralOfLength squareID)))
 )
-
-(define (spiral totalLength) (spiral0 0 0 2 1 1 totalLength))
-
-(define (squareXY squareID) (list-ref (spiral squareID) (- squareID 1)))
 
 (define (squareDistance squareID)
   (let ([coords (squareXY squareID)])
