@@ -85,7 +85,11 @@
   )
 )
 
-(define (spiralOfLength steps) (spiral0 initialState (lambda (state) (>= (spiralState-totalSteps state) steps))))
+(define (spiralOfLength steps)
+  (spiral0 initialState 
+    (lambda (state) (>= (spiralState-totalSteps state) steps))
+  )
+)
 
 (define (squareXY squareID)
   ;; The path is backwards so we always want the first one
@@ -100,6 +104,10 @@
 
 (define day3Problem1 (squareDistance 361527))
 
-(define (spiralUntilMinValue minValue) (spiral0 initialState (lambda (state) (> (spiralState-maxValue state) minValue))))
+(define (spiralUntilMinValue minValue)
+  (spiral0 initialState
+    (lambda (state) (> (spiralState-maxValue state) minValue))
+  )
+)
 
 (define day3Problem2 (spiralState-maxValue (spiralUntilMinValue 361527)))
