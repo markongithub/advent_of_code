@@ -1,7 +1,7 @@
 #lang racket/base
 (require racket/match)
 
-(provide takeStep turnLeft spiralState initialSV initialState spiral0 spiral squareXY squareDistance spiralA spiralB nextVector spiralState-maxValue day3Problem2)
+(provide takeStep turnLeft spiralState initialSV initialState spiral0 spiral squareXY squareDistance spiralA spiralB nextVector spiralState-maxValue day3Problem2 spiralOfLength)
 ;;; okay so the spiral0 goes
 ;;; 1 right, 1 up
 ;;; 2 left, 2 down
@@ -156,6 +156,8 @@
     ]
   )
 )
+
+(define (spiralOfLength steps) (spiralC0 initialState (lambda (state) (>= (spiralState-totalSteps state) steps))))
 
 (define (spiralUntilMinValue minValue) (spiralC0 initialState (lambda (state) (> (spiralState-maxValue state) minValue))))
 
