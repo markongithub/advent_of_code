@@ -20,12 +20,14 @@
 )
 
 (define (turnLeft lastLength lastDirection)
-   (cond ((= lastDirection 0) (cons lastLength 1))
-         ((= lastDirection 1) (cons (+ lastLength 1) 2))
-         ((= lastDirection 2) (cons lastLength 3))
-         ((= lastDirection 3) (cons (+ lastLength 1) 0))
-         (else (raise "invalid direction"))
-   )
+;; turns left and either increments the segment length or doesn't
+;; returns a pair of direction and segment length
+ (cond ((= lastDirection 0) (cons lastLength 1))
+       ((= lastDirection 1) (cons (+ lastLength 1) 2))
+       ((= lastDirection 2) (cons lastLength 3))
+       ((= lastDirection 3) (cons (+ lastLength 1) 0))
+       (else (raise "invalid direction"))
+ )
 )
 
 (struct spiralState (x y direction leftInSegment segmentLength path maxValue
