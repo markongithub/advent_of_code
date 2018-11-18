@@ -1,7 +1,9 @@
 #lang racket/base
 (require racket/match)
 
-(provide takeStep spiralState initialSV squareXY squareDistance day3Problem1 day3Problem2 spiralOfLength)
+(provide takeStep spiralState initialSV spiralOfLength squareXY squareDistance
+  day3Problem1 day3Problem2)
+
 ;;; okay so the spiral0 goes
 ;;; 1 right, 1 up
 ;;; 2 left, 2 down
@@ -26,7 +28,8 @@
    )
 )
 
-(struct spiralState (x y direction leftInSegment segmentLength path maxValue squareValues totalSteps) #:inspector #f)
+(struct spiralState (x y direction leftInSegment segmentLength path maxValue
+  squareValues totalSteps) #:inspector #f)
 
 (define initialSV (hash (cons 0 0) 1))
 
@@ -37,7 +40,8 @@
     [(spiralState _ _ direction leftInSegment segmentLength _ _ _ _)
      (if (> leftInSegment 0) (list direction (- leftInSegment 1) segmentLength)
        (match (turnLeft segmentLength direction)
-         [(cons newLength newDirection) (list newDirection (- newLength 1) newLength)]
+         [(cons newLength newDirection)
+          (list newDirection (- newLength 1) newLength)]
        )
      )
     ]
@@ -68,7 +72,8 @@
 
 (define (spiral0 state termPred)
   (match state
-    [(spiralState x y direction leftInSegment segmentLength path maxValue squareValues totalSteps)
+    [(spiralState x y direction leftInSegment segmentLength path maxValue
+       squareValues totalSteps)
      (if (termPred state) state
        (match (nextVector state) [(list newDirection newLeft newLength)
          (match (takeStep x y newDirection) [(cons newX newY)
