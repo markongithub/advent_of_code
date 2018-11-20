@@ -1,6 +1,6 @@
 #lang racket/base
 
-(provide redistribute stateFromList countStepsToDupe part1Input)
+(provide redistribute stateFromList countStepsToDupe part1Input cycleLength)
 
 (require racket/file)
 (require racket/list)
@@ -42,25 +42,33 @@
   )
 )
 
-(struct day6State (banks past))
+(struct day6State (banks past times))
 
 (define (logThenRedistribute state)
   (match state
-         [(day6State oldBanks past)
-          (day6State (redistribute oldBanks) (set-add past oldBanks))]
+         [(day6State oldBanks past times)
+          (day6State
+            (redistribute oldBanks) (hash-set past oldBanks times) (+ times 1))]
   )
 )
 
 (define (banksSeenBefore state)
   (match state
-         [(day6State banks past) (set-member? past banks)]
+         [(day6State banks past _) (hash-has-key? past banks)]
   )
 )
 
-(define (stateFromList l) (day6State (listToHash l) (set)))
+(define (stateFromList l) (day6State (listToHash l) (hash) 0))
 
 (define (countStepsToDupe state)
   (countStepsUntil logThenRedistribute banksSeenBefore state))
+
+(define (cycleLength state)
+  (match (iterateUntil logThenRedistribute banksSeenBefore state)
+         [(day6State banks past times)
+          (- times (hash-ref past banks))]
+  )
+)
 
 (define (part1Input)
   ;; why is this space delimited?!

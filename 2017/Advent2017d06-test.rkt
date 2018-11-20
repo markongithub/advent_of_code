@@ -10,3 +10,5 @@
 (check-equal? (listToHash '(2 4 1 2)) (iterate redistribute testBanks 5))
 (check-equal? 5 (countStepsToDupe (stateFromList '(0 2 7 0))))
 (check-equal? 7864 (countStepsToDupe (part1Input)))
+(check-equal? 4 (cycleLength (stateFromList '(0 2 7 0))))
+(check-equal? 1695 (cycleLength (part1Input)))
