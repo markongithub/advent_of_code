@@ -18,6 +18,10 @@
   )
 
 (define (hasTwoAndThree0 l hasTwoAlready hasThreeAlready)
+  ;; go through the hash and determine if we have a two and a three
+  ;; it would be MUCH more readable to do separate checks: does it contain two,
+  ;; and does it contain three? but then I'd have to cycle through the hash
+  ;; values twice. thus this monstrosity.
   (if (and hasTwoAlready hasThreeAlready) (cons #t #t)
     (if (null? l) (cons hasTwoAlready hasThreeAlready)
       (case (car l)
@@ -30,7 +34,6 @@
   )
 
 (define (hasTwoAndThree s)
-  ;; go through the hash and determine if we have a two and a three
   (hasTwoAndThree0 (hash-values (charCount s)) #f #f)
   )
 
