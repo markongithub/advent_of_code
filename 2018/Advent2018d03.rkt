@@ -4,6 +4,7 @@
 
 (require racket/file)
 (require racket/match)
+(require racket/set)
 
 (define (figureCoords startX startY width height)
   (for*/list ([x (in-range startX (+ startX width))]
@@ -15,7 +16,7 @@
 (define (markClaim claim h)
   (match claim
          [(list claimID startX startY width height)
-          (foldl (lambda (p hh) (hash-update hh p add1 0))
+          (foldl (lambda (p hh) (hash-update hh p (lambda (st) (set-add st claimID)) (set)))
                  h (figureCoords startX startY width height))]
          )
   )
@@ -25,7 +26,7 @@
   )
 
 (define (countConflicts claims)
-  (length (filter (lambda (p) (> (cdr p) 1)) (hash->list (markClaims claims))))
+  (length (filter (lambda (s) (> (set-count s) 1)) (hash-values (markClaims claims))))
   )
 
 (define (parseClaim s)
