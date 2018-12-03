@@ -1,6 +1,7 @@
 #lang racket/base
 
-(provide figureCoords markClaims countConflicts parseClaim solvePart1File)
+(provide countConflicts parseClaim solvePart1File claimWithoutConflicts
+         solvePart2File)
 
 (require racket/file)
 (require racket/match)
@@ -34,7 +35,8 @@
   )
 
 (define (countConflicts claims)
-  (length (filter (lambda (s) (> (set-count s) 1)) (hash-values (markClaims claims))))
+  (length (filter (lambda (s) (> (set-count s) 1))
+                  (hash-values (markClaims claims))))
   )
 
 (define (parseClaim s)
@@ -47,4 +49,20 @@
 
 (define (solvePart1File f)
   (countConflicts (map parseClaim (file->lines f)))
+  )
+
+(define (claimWithoutConflicts claims)
+  (define (foldableSetRemove v st) (set-remove st v))
+  (set-first
+    (for/fold ([cleanClaims (list->set (map car claims))])
+              ([claimsBySquare (hash-values (markClaims claims))])
+              (if (< (set-count claimsBySquare) 2) cleanClaims
+                (foldl foldableSetRemove cleanClaims (set->list claimsBySquare))
+                )
+              )
+    )
+  )
+
+(define (solvePart2File f)
+  (claimWithoutConflicts (map parseClaim (file->lines f)))
   )
