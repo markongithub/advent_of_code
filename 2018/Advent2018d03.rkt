@@ -14,10 +14,18 @@
   )
 
 (define (markClaim claim h)
+  (define (addToSet claimID)
+    (lambda (s) (set-add s claimID))
+    )
+  (define (updateHash claimID)
+    (lambda (hh coords)
+      (hash-update coords hh (addToSet claimID) (set))
+    )
+    )
   (match claim
          [(list claimID startX startY width height)
-          (foldl (lambda (p hh) (hash-update hh p (lambda (st) (set-add st claimID)) (set)))
-                 h (figureCoords startX startY width height))]
+          (foldl (updateHash claimID) h
+                 (figureCoords startX startY width height))]
          )
   )
 
