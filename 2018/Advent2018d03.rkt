@@ -14,7 +14,7 @@
 
 (define (markClaim claim h)
   (match claim
-         [(list startX startY width height)
+         [(list claimID startX startY width height)
           (foldl (lambda (p hh) (hash-update hh p add1 0))
                  h (figureCoords startX startY width height))]
          )
@@ -30,7 +30,7 @@
 
 (define (parseClaim s)
   (map string->number
-       (cddr
+       (cdr
          (regexp-match #px"^.([\\d]+) @ ([\\d]+),([\\d]+): ([\\d]+)x([\\d]+)" s)
          )
        )
