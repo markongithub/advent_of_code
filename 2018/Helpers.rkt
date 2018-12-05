@@ -1,7 +1,7 @@
 #lang racket/base
 
 ;; functions I suspect will be used in multiple days of AOC.
-(provide listIntsFromFile iterateUntil filterForOne)
+(provide listIntsFromFile iterateUntil filterForOne iterateUntilStable)
 
 (require racket/file)
 
@@ -13,6 +13,14 @@
   ;; applies f to state over and over until (pred state) becomes true.
   (if (pred state) state
     (iterateUntil f pred (f state))
+    )
+  )
+
+(define (iterateUntilStable f state)
+  (let ([nextState (f state)])
+    (if (equal? state nextState) state
+      (iterateUntilStable f nextState)
+      )
     )
   )
 
