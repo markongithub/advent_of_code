@@ -1,7 +1,7 @@
 #lang racket/base
 
 (provide eliminateFirstPair allEliminations solvePart1 solvePart1File
-         solvePart2 solvePart2File debugPart2)
+         solvePart2 solvePart2File)
 
 (require racket/file)
 (require racket/function)
@@ -18,13 +18,17 @@
        )
   )
 
-(define (eliminateFirstPair l)
-  ;; eh, this will be prettier without tail recursion
-  (match l [(list) l]
-           [(list c) l]
+(define (eliminateFirstPair0 l accu)
+  (match l [(list) (reverse accu)]
+           [(list c) (reverse (cons c accu))]
            [(cons c1 (cons c2 xs))
-            (if (isMatch c1 c2) xs (cons c1 (eliminateFirstPair (cdr l))))]
+            (if (isMatch c1 c2) (append (reverse accu) xs)
+              (eliminateFirstPair0 (cdr l) (cons c1 accu)))]
            )
+  )
+
+(define (eliminateFirstPair l)
+  (eliminateFirstPair0 l (list))
   )
 
 (define (allEliminations s)
@@ -52,20 +56,13 @@
   )
 
 (define (solvePart2 s)
-  (define allPossiblePolymers (map (compose list->string (curry eliminateOneLetter (string->list s))) theAlphabet))
-  (apply min (map solvePart1 allPossiblePolymers))
-  )
-
-(define (debugPart2 s)
   (define (eliminateLetter c)
     ((compose list->string (curry eliminateOneLetter (string->list s))) c)
     )
-  (define allPossiblePolymers (map eliminateLetter (take theAlphabet 4)))
-  (take theAlphabet 4)
-  ;;  (eliminateOneLetter (string->list s) #\d)
-  (map allEliminations allPossiblePolymers)
-)
-  
+  (define allPossiblePolymers (map eliminateLetter theAlphabet))
+  (apply min (map solvePart1 allPossiblePolymers))
+  )
+
 (define (solvePart2File f)
   (solvePart2 (car (file->lines f)))
   )
