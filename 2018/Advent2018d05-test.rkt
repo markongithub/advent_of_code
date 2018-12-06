@@ -13,3 +13,6 @@
 (check-equal? "dabCBAcaDA" (testElim "dabCBAcaDA"))
 (check-equal? 10 (solvePart1 "dabAcCaCBAcCcaDA"))
 (check-equal? 9238 (solvePart1File "input/Advent2018d05.txt"))
+(check-equal? 4 (solvePart2 "dabAcCaCBAcCcaDA"))
+(check-equal? 4052 (solvePart2File "input/Advent2018d05.txt"))
+
