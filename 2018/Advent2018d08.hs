@@ -27,14 +27,29 @@ solvePart1 :: Day8Node -> Int
 solvePart1 (Day8Node nChildren nMetadata) =
   sum nMetadata + sum (map solvePart1 nChildren)
 
+childValueSafe :: Day8Node -> Int -> Int
+childValueSafe node index
+  | index < 1 = 0
+  | index > totalCount = 0
+  | otherwise = nodeValue ((children node)!!(index - 1))
+  where totalCount = length $ children node
+
+nodeValue :: Day8Node -> Int
+nodeValue node
+  -- "no child nodes, its value is the sum of its metadata entries"
+  | null (children node) = solvePart1 node
+  | otherwise = sum $ map (\m -> childValueSafe node m) $ metadata node
+
+solvePart2 = nodeValue
+
 testStr = "2 3 0 3 10 11 12 1 1 0 1 99 2 1 1 2"
+testNode = parseNodeStr testStr
 
 main :: IO ()
 main = do
-  putStrLn $ show $ solvePart1 $ parseNodeStr testStr
+  putStrLn $ show $ solvePart1 testNode
   text <- readFile "input/Advent2018d08.txt"
-  putStrLn $ show $ solvePart1 $ parseNodeStr text
---  prereqs <- parseFile "input/Advent2018d07.txt"
---  putStrLn $ show $ solvePart1 prereqs
---  putStrLn $ show $ solvePart2 testData 2 0
---  putStrLn $ show $ solvePart2 prereqs 5 60
+  let inputNode = parseNodeStr text
+  putStrLn $ show $ solvePart1 inputNode
+  putStrLn $ show $ solvePart2 testNode
+  putStrLn $ show $ solvePart2 inputNode
