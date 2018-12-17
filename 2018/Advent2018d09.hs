@@ -113,8 +113,4 @@ main = do
   putStrLn $ show $ solveDay9 21 6111
   putStrLn $ show $ solveDay9 30 5807
   putStrLn $ show $ solveDay9 464 71730
---  putStrLn $ show $ playGame 464 71730
   putStrLn $ show $ solveDay9 464 7173000
-
-  -- prereqs <- parseFile "input/Advent2018d07.txt"
-  -- putStrLn $ show $ solvePart1 prereqs
