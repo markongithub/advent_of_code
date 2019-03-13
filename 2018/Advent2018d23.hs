@@ -3,9 +3,10 @@ module Main where
 import Data.List (maximumBy)
 import Data.Map (Map)
 import qualified Data.Map as Map
+import qualified Data.Maybe as Maybe
 import Data.Set (Set)
 import qualified Data.Set as Set
-import Debug.Trace (traceShow)
+import Debug.Trace (trace, traceShow)
 
 data Nanobot = Nanobot { botX :: Int, botY :: Int, botZ :: Int, botR :: Int }
                  deriving (Eq, Show)
@@ -40,6 +41,12 @@ nanobotsInRange ls (Nanobot xC yC zC rC) = let
   filterFunc b2 = (distance (xC, yC, zC) b2) <= rC
   in length $ filter filterFunc ls
 
+nanobotsInRangeOfSquare :: [Nanobot] -> Coords -> [Int]
+nanobotsInRangeOfSquare ls (x, y, z) = let
+  filterFunc (_, b2) = (distance (x, y, z) b2) <= botR b2
+  pairs = zip [0..] ls
+  in map fst $ filter filterFunc pairs
+
 -- for every bot we are going to mark all the squares in its range
 -- Map (Int, Int, Int) Int
 
@@ -47,27 +54,31 @@ type SquareMap = Map (Int, Int, Int) (Set Int)
 
 resizeBot :: (Int -> Int) -> Nanobot -> Nanobot
 resizeBot f (Nanobot x0 y0 z0 r0) =
-  Nanobot (f x0) (f y0) (f z0) (f r0)
+  Nanobot (f x0) (f y0) (f z0) (1 + (f r0))
 
 resizeRange :: (Int -> Int) -> Range3D -> Range3D
 resizeRange f (a0, b0, c0, d0, e0, f0) = let
   [a1, b1, c1, d1, e1, f1] = map f [a0, b0, c0, d0, e0, f0]
   in (a1, b1, c1, d1, e1, f1)
 
+resizeCoords :: (Int -> Int) -> Coords -> Coords
+resizeCoords f (x, y, z) = let
+  [x2, y2, z2] = map f [x, y, z]
+  in (x2, y2, z2)
+
 addBotToMap :: Int -> Range3D -> Int -> SquareMap -> Nanobot -> SquareMap
 addBotToMap divisor shrunkenRange botID map bot = let
-  Nanobot x1 y1 z1 r1 = resizeBot (`div` divisor) bot
-  maxDistance = 102111240 `div` divisor
-  -- maxDistance = 101990033 `div` divisor
-  squares = filter (\c -> distanceZero c < maxDistance) $ squaresInRadiusAndRange (x1, y1, z1) r1 shrunkenRange maxDistance
-  -- squares = squaresInRadiusAndRange (x1, y1, z1) r1 shrunkenRange maxDistance
+  shrunkenBot = resizeBot (`div` divisor) bot
+  Nanobot x1 y1 z1 r1 = shrunkenBot
+  squares = squaresInRadiusAndRange (x1, y1, z1) r1 shrunkenRange
+  trace1 foo = foo --trace (show (botID, bot) ++ " after shrinking can see " ++ show squares) foo
   updateSquare mapI square = Map.insertWith Set.union square
                                (Set.singleton botID) mapI
-  in foldl updateSquare map squares
+  in trace1 $ foldl updateSquare map squares
 
 shrunkenMapFromBots :: Range3D -> Int -> [Nanobot] -> SquareMap
 shrunkenMapFromBots range divisor bots = let
-  range1 = resizeRange (`div` divisor) range
+  range1 = trace ("divisor: " ++ show divisor) $ resizeRange (`div` divisor) range
   botsWithIDs = zip [0..] bots
   addPairToMap map (botID, bot) = addBotToMap divisor range1 botID map bot
   in foldl addPairToMap Map.empty botsWithIDs
@@ -85,7 +96,7 @@ listIndices ls indices = let
 narrowProblem :: Range3D -> [Nanobot] -> Int -> (Range3D, [Nanobot])
 narrowProblem range bots divisor = let
   map = shrunkenMapFromBots range divisor bots
-  ((x, y, z), set) = pairWithMaxSize map
+  ((x, y, z), set) = trace ("map: " ++ showMap map) $ pairWithMaxSize map
   (oldXMin, oldXMax, oldYMin, oldYMax, oldZMin, oldZMax) = range
   newXMin = max (x * divisor) oldXMin
   newXMax = min ((x + 1) * divisor) oldXMax
@@ -94,8 +105,8 @@ narrowProblem range bots divisor = let
   newZMin = max (z * divisor) oldZMin
   newZMax = min ((z + 1) * divisor) oldZMax
   newRange = (newXMin, newXMax, newYMin, newYMax, newZMin, newZMax)
-  newBots = bots -- listIndices bots (Set.toList set)
-  in traceShow (Set.size set) (newRange, newBots)
+  newBots = listIndices bots (Set.toList set)
+  in (newRange, newBots)
 
 maxRangeSize :: Range3D -> Int
 maxRangeSize (a, b, c, d, e, f) = maximum [b-a, d-c, f-e]
@@ -104,21 +115,29 @@ triangulate2 :: [Nanobot] -> Range3D -> Int -> Coords
 triangulate2 bots range granularity
   | traceShow (range, length bots) False = undefined
   | allDone = (xMin, yMin, zMin)
+  | trace ("nextRange: " ++ (show nextRange)) False = undefined
   | otherwise = recurse
   where
     divisions = max 1 $ (maxRangeSize range) `div` granularity
     (nextRange, nextBots) = narrowProblem range bots divisions
     (xMin, xMax, yMin, yMax, zMin, zMax) = nextRange
-    recurse = triangulate2 nextBots nextRange granularity
+    -- I'm not using nextBots here anymore.
+    recurse = triangulate2 bots nextRange granularity
     allDone = ((xMax - xMin) <= 1) && ((yMax - yMin) <= 1) && ((zMax - zMin) <= 1)
+
+showMap :: SquareMap -> String
+showMap m = let
+  pairs = Map.toList m
+  simplerPairs = map (\(x, y) -> (x, Set.size y)) pairs
+  in show simplerPairs
 
 pairWithMaxSize :: SquareMap -> (Coords, Set Int)
 pairWithMaxSize map = let
   compareOnSndSize x y = compare (Set.size (snd x)) (Set.size (snd y))
-  in if Map.null map then error "the square map is empty" else maximumBy compareOnSndSize $ Map.toList map
+  in maximumBy compareOnSndSize $ Map.toList map
 
-squaresInRadiusAndRange :: Coords -> Int -> Range3D -> Int -> [Coords]
-squaresInRadiusAndRange (x0, y0, z0) r (xMin, xMax, yMin, yMax, zMin, zMax) maxDistance = let
+squaresInRadiusAndRange :: Coords -> Int -> Range3D -> [Coords]
+squaresInRadiusAndRange (x0, y0, z0) r (xMin, xMax, yMin, yMax, zMin, zMax) = let
   xMinOffset :: Int
   xMinOffset = max (-r) (xMin - x0)
   xMaxOffset :: Int
@@ -132,11 +151,7 @@ squaresInRadiusAndRange (x0, y0, z0) r (xMin, xMax, yMin, yMax, zMin, zMax) maxD
   in [(x0 + xd, y0 + yd, z0 + zd) | xd <- xdRange,
                                     yd <- [yMinOffset..yMaxOffset],
                                     zd <- [zMinOffset..zMaxOffset],
-                                    (abs xd + abs yd + abs zd) <= r]
-  --                                  ((abs (y0 + yd)) + (abs (y0 + yd)) + (abs (z0 + zd))) <= maxDistance ]
-
-distanceZero :: Coords -> Int
-distanceZero (x, y, z) = abs x + abs y + abs z
+                                    (abs xd + abs yd + abs zd) <= r ]
 
 squaresInRange :: Range3D -> [(Int, Int, Int)]
 squaresInRange (xMin, xMax, yMin, yMax, zMin, zMax) =
@@ -159,6 +174,8 @@ solvePart1 ls = let
 
 type Range3D = (Int, Int, Int, Int, Int, Int)
 type Coords = (Int, Int, Int)
+
+data RangeND = RangeND [Int] [Int]
 
 botRange :: [Nanobot] -> Range3D
 botRange bots = let
@@ -226,37 +243,45 @@ triangulate bots range divisions
     recurse = triangulate bots nextStep divisions
     allDone = xMin == xMax && yMin == yMax && zMin == zMax
 
-solvePart2 :: [Nanobot] -> (Coords, Int)
-solvePart2 bots = let
+solvePart2Debug :: [Nanobot] -> Bool -- (Int, Coords, Int)
+solvePart2Debug bots = let
+  range = botRange bots
+  bugBots = bots
+  bestGuess = (13839552,58131963,26154114)
+  bestBots = nanobotsInRangeOfSquare bugBots bestGuess
+  divisions = max 1 $ (maxRangeSize range) `div` 2
+  botMap = shrunkenMapFromBots range divisions bugBots
+  shrunkenGuess = resizeCoords (`div` divisions) bestGuess
+  botsInShrunkenGuess = Maybe.fromJust $ Map.lookup shrunkenGuess botMap
+  trace1 foo = trace ((show $ length bestBots) ++ " bots near best guess: " ++ (show bestBots)) foo
+  trace1a foo = trace ("shrunkenGuess: " ++ show shrunkenGuess) foo
+  trace2 foo = trace ((show  $ length botsInShrunkenGuess) ++ " bots near shrunken best guess: " ++ (show botsInShrunkenGuess)) foo
   allSquares :: [(Int, Int, Int)]
-  allSquares = squaresInRange $ botRange bots
-  -- 17 works with a maxDistance
-  bestSquare = triangulate2 bots (botRange bots) 17
+  allSquares = squaresInRange range
+  -- 14 is okay, 15 was too high
+  -- bestSquare = triangulate2 bots range 2 -- (maxRangeSize range `div` 2)
+  -- (c0, c1, c2) = bestSquare
+  -- manDist = (abs c0 + abs c1 + abs c2)
+  in trace1 $ trace1a $ trace2 $ True -- (manDist, bestSquare, length $ nanobotsInRangeOfSquare bots bestSquare)
+
+solvePart2 :: [Nanobot] -> (Int, Coords, Int)
+solvePart2 bots = let
+  range = botRange bots
+  allSquares :: [(Int, Int, Int)]
+  allSquares = squaresInRange range
+  -- 14 is okay, 15 was too high
+  bestSquare = triangulate2 bots range 14 -- (maxRangeSize range `div` 2)
   (c0, c1, c2) = bestSquare
-  in (bestSquare, abs c0 + abs c1 + abs c2)
+  manDist = (abs c0 + abs c1 + abs c2)
+  in (manDist, bestSquare, length $ nanobotsInRangeOfSquare bots bestSquare)
 
-bigProblem :: IO (Range3D, [Nanobot])
-bigProblem = do
-  bots <- parseFile "input/Advent2018d23.txt"
-  return (botRange bots, bots)
-
-stateOfTheArt :: IO (Range3D, [Nanobot])
-stateOfTheArt = do
-  bots <- parseFile "input/Advent2018d23.txt"
-  let (range2, bots2) = narrowProblem (botRange bots) bots 10000000
-  return (range2, bots2)
-
-
-((14094162,58871033,27147936),909)
-
+-- 98125627 is wrong but 
 main :: IO ()
 main = do
-  testBots <- parseFile "input/Advent2018d23test.txt"
-  putStrLn $ show $ solvePart1 testBots
+--  testBots <- parseFile "input/Advent2018d23test.txt"
+--  putStrLn $ show $ solvePart1 testBots
   bots <- parseFile "input/Advent2018d23.txt"
-  putStrLn $ show $ solvePart1 bots
-  testBots2 <- parseFile "input/Advent2018d23test2.txt"
-  putStrLn $ show $ solvePart2 testBots2
+--  putStrLn $ show $ solvePart1 bots
+--  testBots2 <- parseFile "input/Advent2018d23test2.txt"
+--  putStrLn $ show $ solvePart2 testBots2
   putStrLn $ show $ solvePart2 bots
-
-
