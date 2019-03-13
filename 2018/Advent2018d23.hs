@@ -1,6 +1,6 @@
 module Main where
 
-import Data.List (maximumBy)
+import Data.List (maximumBy, sort)
 import Data.Map (Map)
 import qualified Data.Map as Map
 import qualified Data.Maybe as Maybe
@@ -50,7 +50,7 @@ nanobotsInRangeOfSquare ls (x, y, z) = let
 -- for every bot we are going to mark all the squares in its range
 -- Map (Int, Int, Int) Int
 
-type SquareMap = Map (Int, Int, Int) (Set Int)
+type SquareMap = Map Coords (Set Int)
 
 resizeBot :: (Int -> Int) -> Nanobot -> Nanobot
 resizeBot f (Nanobot x0 y0 z0 r0) =
@@ -83,6 +83,12 @@ shrunkenMapFromBots range divisor bots = let
   addPairToMap map (botID, bot) = addBotToMap divisor range1 botID map bot
   in foldl addPairToMap Map.empty botsWithIDs
 
+squareMapToRanges :: Range3D -> Int -> SquareMap -> [CandidateRange]
+squareMapToRanges range divisor sMap = let
+  modPair (coords, botSet) = CandidateRange (Set.size botSet)
+                               (unshrinkSubrange range divisor coords)
+  in reverse $ sort $ map modPair $ Map.toList sMap
+  
 listIndices :: [a] -> [Int] -> [a]
 listIndices ls indices = let
   listIndices0 :: [b] -> [Int] -> Int -> [b]
@@ -97,16 +103,68 @@ narrowProblem :: Range3D -> [Nanobot] -> Int -> (Range3D, [Nanobot])
 narrowProblem range bots divisor = let
   map = shrunkenMapFromBots range divisor bots
   ((x, y, z), set) = trace ("map: " ++ showMap map) $ pairWithMaxSize map
-  (oldXMin, oldXMax, oldYMin, oldYMax, oldZMin, oldZMax) = range
+  newRange = unshrinkSubrange range divisor (x, y, z)
+  newBots = listIndices bots (Set.toList set)
+  in (newRange, newBots)
+
+unshrinkSubrange :: Range3D -> Int -> Coords -> Range3D
+unshrinkSubrange oldRange divisor (x, y, z) = let
+  (oldXMin, oldXMax, oldYMin, oldYMax, oldZMin, oldZMax) = oldRange
   newXMin = max (x * divisor) oldXMin
   newXMax = min ((x + 1) * divisor) oldXMax
   newYMin = max (y * divisor) oldYMin
   newYMax = min ((y + 1) * divisor) oldYMax
   newZMin = max (z * divisor) oldZMin
   newZMax = min ((z + 1) * divisor) oldZMax
-  newRange = (newXMin, newXMax, newYMin, newYMax, newZMin, newZMax)
-  newBots = listIndices bots (Set.toList set)
-  in (newRange, newBots)
+  in (newXMin, newXMax, newYMin, newYMax, newZMin, newZMax)
+  
+manhattanDistance :: Coords -> Int
+manhattanDistance (x, y, z) = abs x + abs y + abs z
+
+data CandidateCoords = CandidateCoords Int Coords deriving (Eq, Show)
+data CandidateRange = CandidateRange Int Range3D deriving (Eq, Show)
+
+instance Ord CandidateCoords where
+  compare (CandidateCoords b1 c1) (CandidateCoords b2 c2)
+    | b1 /= b2 = compare b1 b2
+    | otherwise = compare (manhattanDistance c2) (manhattanDistance c1)
+
+instance Ord CandidateRange where
+  compare (CandidateRange b1 _) (CandidateRange b2 _) = compare b1 b2
+--    | b1 /= c1 = compare b1 b2
+--    | otherwise = compare (manhattanDistance c2) (manhattanDistance c1)
+
+coordsBeatsRange :: CandidateCoords -> CandidateRange -> Bool
+coordsBeatsRange (CandidateCoords b1 _) (CandidateRange b2 _) = b1 > b2
+
+recurseAcross :: [Nanobot] -> Int -> Int -> CandidateCoords -> [CandidateRange] -> CandidateCoords
+recurseAcross bots granularity cutoff bestSoFar [] = bestSoFar
+recurseAcross bots granularity cutoff bestSoFar sortedCandidates
+  | newCutoff > nextBotCount = bestSoFar
+  | otherwise = recurseAcross bots granularity newCutoff newBest (tail sortedCandidates)
+  where nextCandidate = head sortedCandidates
+        CandidateRange nextBotCount _ = nextCandidate
+        CandidateCoords bestBotCount _ = bestSoFar
+        newCutoff = max cutoff bestBotCount    
+        nextResult = recurseDown bots granularity newCutoff nextCandidate
+        newBest = max bestSoFar nextResult
+
+rangeToCoords :: Range3D -> Coords
+rangeToCoords (x1, x2, y1, y2, z1, z2)
+  | (x1 /= x2) || (y1 /= y2) || (z1 /= z2) = error "cannot convert a wide range"
+  | otherwise = (x1, y1, z1)
+
+recurseDown :: [Nanobot] -> Int -> Int -> CandidateRange -> CandidateCoords
+recurseDown bots granularity cutoff (CandidateRange botCount range)
+  | rangeSize == 0 = CandidateCoords botCount (rangeToCoords range)
+  | otherwise = recurseAcross bots granularity cutoff nullCandidate candidates
+  where
+    rangeSize = maxRangeSize range
+    divisor = rangeSize `div` granularity
+    nullCandidate = CandidateCoords (-1) undefined
+    candidates = squareMapToRanges range divisor $ shrunkenMapFromBots range divisor bots
+
+
 
 maxRangeSize :: Range3D -> Int
 maxRangeSize (a, b, c, d, e, f) = maximum [b-a, d-c, f-e]
@@ -270,7 +328,7 @@ solvePart2 bots = let
   allSquares :: [(Int, Int, Int)]
   allSquares = squaresInRange range
   -- 14 is okay, 15 was too high
-  bestSquare = triangulate2 bots range 14 -- (maxRangeSize range `div` 2)
+  bestSquare = triangulate2 bots range 2 -- (maxRangeSize range `div` 2)
   (c0, c1, c2) = bestSquare
   manDist = (abs c0 + abs c1 + abs c2)
   in (manDist, bestSquare, length $ nanobotsInRangeOfSquare bots bestSquare)
