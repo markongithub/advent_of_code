@@ -137,16 +137,20 @@ instance Ord CandidateRange where
 coordsBeatsRange :: CandidateCoords -> CandidateRange -> Bool
 coordsBeatsRange (CandidateCoords b1 _) (CandidateRange b2 _) = b1 > b2
 
-recurseAcross :: [Nanobot] -> Int -> Int -> CandidateCoords -> [CandidateRange] -> CandidateCoords
-recurseAcross bots granularity cutoff bestSoFar [] = bestSoFar
-recurseAcross bots granularity cutoff bestSoFar sortedCandidates
+recurseAcross :: Int -> [Nanobot] -> Int -> Int -> CandidateCoords -> [CandidateRange] -> CandidateCoords
+recurseAcross depth bots granularity cutoff bestSoFar [] = bestSoFar
+recurseAcross depth bots granularity cutoff bestSoFar sortedCandidates
+  | trace ("recurseAcross " ++ show (depth, cutoff, nextBotCount, bestSoFar) ++ " candidates left: " ++ show (length sortedCandidates)) False = undefined
   | newCutoff > nextBotCount = bestSoFar
-  | otherwise = recurseAcross bots granularity newCutoff newBest (tail sortedCandidates)
+  | newCutoff > nextBotCount = bestSoFar
+  | trace ("result of nextCandidate is " ++ show nextResult) False = undefined
+  | otherwise = recurseAcross depth bots granularity newCutoff newBest (tail sortedCandidates)
   where nextCandidate = head sortedCandidates
-        CandidateRange nextBotCount _ = nextCandidate
+        CandidateRange nextBotCount nextRange = nextCandidate
+        nextRangeSize = maxRangeSize nextRange
         CandidateCoords bestBotCount _ = bestSoFar
         newCutoff = max cutoff bestBotCount    
-        nextResult = recurseDown bots granularity newCutoff nextCandidate
+        nextResult = recurseDown (depth + 1) bots granularity newCutoff nextCandidate
         newBest = max bestSoFar nextResult
 
 rangeToCoords :: Range3D -> Coords
@@ -154,17 +158,29 @@ rangeToCoords (x1, x2, y1, y2, z1, z2)
   | (x1 /= x2) || (y1 /= y2) || (z1 /= z2) = error "cannot convert a wide range"
   | otherwise = (x1, y1, z1)
 
-recurseDown :: [Nanobot] -> Int -> Int -> CandidateRange -> CandidateCoords
-recurseDown bots granularity cutoff (CandidateRange botCount range)
-  | rangeSize == 0 = CandidateCoords botCount (rangeToCoords range)
-  | otherwise = recurseAcross bots granularity cutoff nullCandidate candidates
+
+recurseDown :: Int -> [Nanobot] -> Int -> Int -> CandidateRange -> CandidateCoords
+recurseDown depth bots granularity cutoff cRange
+  | trace("recurseDown: " ++ show (depth, rangeSize, cutoff, cRange)) False = undefined
+  | rangeSize == 0 || divisor == 0 = bruteForce bots range
+  | trace ("sMap: " ++ showMap sMap) False = undefined
+  | trace ("bMap: " ++ showMap bMap) False = undefined
+  | otherwise = recurseAcross depth bots granularity cutoff nullCandidate candidates
   where
+    CandidateRange botCount range = cRange
     rangeSize = maxRangeSize range
     divisor = rangeSize `div` granularity
-    nullCandidate = CandidateCoords (-1) undefined
-    candidates = squareMapToRanges range divisor $ shrunkenMapFromBots range divisor bots
+    nullCandidate = CandidateCoords (-1) (1979, 1979, 1979)
+    sMap = shrunkenMapFromBots range divisor bots
+    bMap = betterSquareMap sMap
+    candidates = squareMapToRanges range divisor bMap
 
-
+bruteForce :: [Nanobot] -> Range3D -> CandidateCoords
+bruteForce bots range = let
+  squares = squaresInRange range
+  makeCandidate square = CandidateCoords (inRangeOfBots bots square) square
+  candidates = map makeCandidate squares
+  in maximum candidates
 
 maxRangeSize :: Range3D -> Int
 maxRangeSize (a, b, c, d, e, f) = maximum [b-a, d-c, f-e]
@@ -210,6 +226,20 @@ squaresInRadiusAndRange (x0, y0, z0) r (xMin, xMax, yMin, yMax, zMin, zMax) = le
                                     yd <- [yMinOffset..yMaxOffset],
                                     zd <- [zMinOffset..zMaxOffset],
                                     (abs xd + abs yd + abs zd) <= r ]
+
+squaresToCheckForCube :: Coords -> [Coords]
+squaresToCheckForCube (x, y, z) = squaresInRange (x, x+1, y, y+1, z, z+1)
+
+betterSquareMap :: SquareMap -> SquareMap
+betterSquareMap old = let
+  -- for each map key in the old map
+  -- the new map has the sum of squaresToCheckForCube
+  getBots coords = Map.findWithDefault Set.empty coords old
+  newValue coords = foldl Set.union Set.empty $ map getBots $ squaresToCheckForCube coords
+  makePair coords = (coords, newValue coords)
+  pairs = map makePair $ Map.keys old
+  in Map.fromList pairs
+
 
 squaresInRange :: Range3D -> [(Int, Int, Int)]
 squaresInRange (xMin, xMax, yMin, yMax, zMin, zMax) =
@@ -325,21 +355,21 @@ solvePart2Debug bots = let
 solvePart2 :: [Nanobot] -> (Int, Coords, Int)
 solvePart2 bots = let
   range = botRange bots
-  allSquares :: [(Int, Int, Int)]
-  allSquares = squaresInRange range
-  -- 14 is okay, 15 was too high
-  bestSquare = triangulate2 bots range 2 -- (maxRangeSize range `div` 2)
-  (c0, c1, c2) = bestSquare
-  manDist = (abs c0 + abs c1 + abs c2)
-  in (manDist, bestSquare, length $ nanobotsInRangeOfSquare bots bestSquare)
+  granularity = 2
+  solution = recurseDown 1 bots granularity 900 (CandidateRange (length bots) range)
+  CandidateCoords count coords = solution
+  in (manhattanDistance coords, coords, count)
 
--- 98125627 is wrong but 
+-- 98125627 is wrong but
+-- 99843343 (914) is wrong
+-- BUG: recurseDown: (900,CandidateRange 966 (11384343,22768686,56921715,68306058,22768687,34153029))
+-- That is wrong, it should have at least 978.
 main :: IO ()
 main = do
 --  testBots <- parseFile "input/Advent2018d23test.txt"
 --  putStrLn $ show $ solvePart1 testBots
-  bots <- parseFile "input/Advent2018d23.txt"
+  bots <- parseFile "input/Advent2018d23jabbalaci.txt"
 --  putStrLn $ show $ solvePart1 bots
---  testBots2 <- parseFile "input/Advent2018d23test2.txt"
---  putStrLn $ show $ solvePart2 testBots2
+  --testBots2 <- parseFile "input/Advent2018d23test2.txt"
+  -- putStrLn $ show $ solvePart2 testBots2
   putStrLn $ show $ solvePart2 bots
