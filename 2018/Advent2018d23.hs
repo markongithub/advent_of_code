@@ -36,16 +36,21 @@ parseFile f = let
   parseText s = map parseNanobot $ lines s
   in fmap parseText text
   
-nanobotsInRange :: [Nanobot] -> Nanobot -> Int
-nanobotsInRange ls (Nanobot coords rC) = let
-  filterFunc b2 = (distance coords b2) <= rC
-  in length $ filter filterFunc ls
+inRangeOfBot :: Coords -> Nanobot -> Bool
+inRangeOfBot coords bot = (distance coords bot) <= botR bot
 
 nanobotsInRangeOfSquare :: [Nanobot] -> Coords -> [Int]
 nanobotsInRangeOfSquare ls coords = let
-  filterFunc (_, b2) = (distance coords b2) <= botR b2
+  filterFunc (_, bot) = inRangeOfBot coords bot
   pairs = zip [0..] ls
   in map fst $ filter filterFunc pairs
+
+nanobotsInRange :: [Nanobot] -> Nanobot -> Int
+nanobotsInRange ls (Nanobot coords rC) =
+  length $ nanobotsInRangeOfSquare ls coords
+
+inRangeOfBots :: [Nanobot] -> Coords -> Int
+inRangeOfBots bots coords = length $ filter (inRangeOfBot coords) bots
 
 -- for every bot we are going to mark all the squares in its range
 type SquareMap = Map Coords (Set Int)
@@ -84,16 +89,6 @@ squareMapToRanges range divisor sMap = let
                                (unshrinkSubrange range divisor coords)
   in reverse $ sort $ map modPair $ Map.toList sMap
   
-listIndices :: [a] -> [Int] -> [a]
-listIndices ls indices = let
-  listIndices0 :: [b] -> [Int] -> Int -> [b]
-  listIndices0 [] _ _ = []
-  listIndices0 _ [] _ = []
-  listIndices0 (x:xs) (i:is) curIndex
-    | i == curIndex = x:(listIndices0 xs is (curIndex + 1))
-    | otherwise = listIndices0 xs (i:is) (curIndex + 1)
-  in listIndices0 ls indices 0
-
 unshrinkSubrange :: RangeND -> Int -> Coords -> RangeND
 unshrinkSubrange (RangeND oldMins oldMaxes) divisor shrunkenCoords = let
   unshrinkMin oldMin shrunkenCoord = max (shrunkenCoord * divisor) oldMin
@@ -223,12 +218,6 @@ squaresInRange (RangeND mins maxes) = let
   -- now I have a LoL [[xMin...xMax], [yMin..yMax]... etc]
   in confusingCombinationsByPosition listOfRanges
 
-inRangeOfBot :: Coords -> Nanobot -> Bool
-inRangeOfBot coords bot = (distance coords bot) <= botR bot
-
-inRangeOfBots :: [Nanobot] -> Coords -> Int
-inRangeOfBots bots coords = length $ filter (inRangeOfBot coords) bots
-
 solvePart1 :: [Nanobot] -> Int
 solvePart1 ls = let
   strongest = strongestBot ls
@@ -246,9 +235,6 @@ botRange bots = let
     in botRange0 xs (RangeND newMins newMaxes)
   (Nanobot coords0 _) = head bots
   in botRange0 (tail bots) (RangeND coords0 coords0)
-
-moreThanOneElem :: [a] -> Bool
-moreThanOneElem ls = null $ tail ls
 
 solvePart2 :: [Nanobot] -> Int -> (Int, Coords, Int)
 solvePart2 bots cutoff = let
