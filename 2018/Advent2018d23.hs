@@ -226,9 +226,7 @@ squaresInRange (xMin, xMax, yMin, yMax, zMin, zMax) =
                   zR <- [zMin..zMax]]
 
 inRangeOfBot :: (Int, Int, Int) -> Nanobot -> Bool
-inRangeOfBot (x0, y0, z0) bot = let
-  (Nanobot x1 y1 z1 r1) = bot
-  in (distance (x0, y0, z0) bot) <= r1
+inRangeOfBot (x0, y0, z0) bot = (distance (x0, y0, z0) bot) <= botR bot
 
 inRangeOfBots :: [Nanobot] -> (Int, Int, Int) -> Int
 inRangeOfBots bots coords = length $ filter (inRangeOfBot coords) bots
@@ -247,7 +245,7 @@ botRange :: [Nanobot] -> Range3D
 botRange bots = let
   botRange0 [] xMin xMax yMin yMax zMin zMax =
     (xMin, xMax, yMin, yMax, zMin, zMax)
-  botRange0 ((Nanobot x0 y0 z0 _):xs) xMin xMax yMin yMax zMin zMax = let
+  botRange0 (x:xs) xMin xMax yMin yMax zMin zMax = let
     newXMin = min xMin x0
     newXMax = max xMax x0
     newYMin = min yMin y0
