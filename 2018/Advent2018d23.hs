@@ -99,14 +99,6 @@ listIndices ls indices = let
     | otherwise = listIndices0 xs (i:is) (curIndex + 1)
   in listIndices0 ls indices 0
 
-narrowProblem :: Range3D -> [Nanobot] -> Int -> (Range3D, [Nanobot])
-narrowProblem range bots divisor = let
-  map = shrunkenMapFromBots range divisor bots
-  ((x, y, z), set) = trace ("map: " ++ showMap map) $ pairWithMaxSize map
-  newRange = unshrinkSubrange range divisor (x, y, z)
-  newBots = listIndices bots (Set.toList set)
-  in (newRange, newBots)
-
 unshrinkSubrange :: Range3D -> Int -> Coords -> Range3D
 unshrinkSubrange oldRange divisor (x, y, z) = let
   (oldXMin, oldXMax, oldYMin, oldYMax, oldZMin, oldZMax) = oldRange
@@ -184,20 +176,6 @@ bruteForce bots range = let
 
 maxRangeSize :: Range3D -> Int
 maxRangeSize (a, b, c, d, e, f) = maximum [b-a, d-c, f-e]
-
-triangulate2 :: [Nanobot] -> Range3D -> Int -> Coords
-triangulate2 bots range granularity
-  | traceShow (range, length bots) False = undefined
-  | allDone = (xMin, yMin, zMin)
-  | trace ("nextRange: " ++ (show nextRange)) False = undefined
-  | otherwise = recurse
-  where
-    divisions = max 1 $ (maxRangeSize range) `div` granularity
-    (nextRange, nextBots) = narrowProblem range bots divisions
-    (xMin, xMax, yMin, yMax, zMin, zMax) = nextRange
-    -- I'm not using nextBots here anymore.
-    recurse = triangulate2 bots nextRange granularity
-    allDone = ((xMax - xMin) <= 1) && ((yMax - yMin) <= 1) && ((zMax - zMin) <= 1)
 
 showMap :: SquareMap -> String
 showMap m = let
@@ -280,77 +258,8 @@ botRange bots = let
   (Nanobot x0 y0 z0 _) = head bots
   in botRange0 (tail bots) x0 x0 y0 y0 z0 z0
 
-divideRange minR maxD 0 = []
-divideRange minR maxD divisions = let
-  divisor = divisions + 1
-  increment = max 1 ((maxD - minR) `div` divisor)
-  nextStep = minR + increment
-  recurse = nextStep : (divideRange nextStep maxD (divisions - 1))
-  in if (divisions > (maxD - minR))
-       then [minR..maxD]
-       else if (minR == maxD || nextStep == maxD) then [maxD] else recurse
-
-figureError :: Int -> Int -> Int -> Int
-figureError min max divisions
-  | divisions > (max + 1 - min) = 0
-  | rem == 0 = quot
-  | otherwise = quot + 1
-  where (quot, rem) = (max - min) `divMod` (divisions + 1)
-
-divideRange3D :: Range3D -> Int -> (Coords, [Coords])
-divideRange3D (xMin, xMax, yMin, yMax, zMin, zMax) divisions = let
-  xs = divideRange xMin xMax divisions
-  xErr = figureError xMin xMax divisions
-  ys = divideRange yMin yMax divisions
-  yErr = figureError yMin yMax divisions
-  zs = divideRange zMin zMax divisions
-  zErr = figureError zMin zMax divisions
-  coords = [(x0, y0, z0) | x0 <- xs, y0 <- ys, z0 <- zs]
-  in ((xErr, yErr, zErr), coords)
-
 moreThanOneElem :: [a] -> Bool
 moreThanOneElem ls = null $ tail ls
-
-narrowRange :: [Nanobot] -> Range3D -> Int -> Range3D
-narrowRange bots range divisions = let
-  ((xErr, yErr, zErr), allSquares) = divideRange3D range divisions
-  allPairs = zip allSquares (map (inRangeOfBots bots) allSquares)
-  maxPair = maximumBy (\b1 b2 -> compare (snd b1) (snd b2)) allPairs
-  (bestX, bestY, bestZ) = fst maxPair
-  in (bestX - xErr, bestX + xErr, bestY - yErr, bestY + yErr,
-      bestZ - zErr, bestZ + zErr)
-
-triangulate :: [Nanobot] -> Range3D -> Int -> Coords
-triangulate bots range divisions
-  | traceShow range False = undefined
-  | allDone = (xMin, yMin, zMin)
-  | otherwise = recurse
-  where 
-    nextStep = narrowRange bots range divisions
-    (xMin, xMax, yMin, yMax, zMin, zMax) = nextStep
-    recurse = triangulate bots nextStep divisions
-    allDone = xMin == xMax && yMin == yMax && zMin == zMax
-
-solvePart2Debug :: [Nanobot] -> Bool -- (Int, Coords, Int)
-solvePart2Debug bots = let
-  range = botRange bots
-  bugBots = bots
-  bestGuess = (13839552,58131963,26154114)
-  bestBots = nanobotsInRangeOfSquare bugBots bestGuess
-  divisions = max 1 $ (maxRangeSize range) `div` 2
-  botMap = shrunkenMapFromBots range divisions bugBots
-  shrunkenGuess = resizeCoords (`div` divisions) bestGuess
-  botsInShrunkenGuess = Maybe.fromJust $ Map.lookup shrunkenGuess botMap
-  trace1 foo = trace ((show $ length bestBots) ++ " bots near best guess: " ++ (show bestBots)) foo
-  trace1a foo = trace ("shrunkenGuess: " ++ show shrunkenGuess) foo
-  trace2 foo = trace ((show  $ length botsInShrunkenGuess) ++ " bots near shrunken best guess: " ++ (show botsInShrunkenGuess)) foo
-  allSquares :: [(Int, Int, Int)]
-  allSquares = squaresInRange range
-  -- 14 is okay, 15 was too high
-  -- bestSquare = triangulate2 bots range 2 -- (maxRangeSize range `div` 2)
-  -- (c0, c1, c2) = bestSquare
-  -- manDist = (abs c0 + abs c1 + abs c2)
-  in trace1 $ trace1a $ trace2 $ True -- (manDist, bestSquare, length $ nanobotsInRangeOfSquare bots bestSquare)
 
 solvePart2 :: [Nanobot] -> (Int, Coords, Int)
 solvePart2 bots = let
@@ -368,7 +277,7 @@ main :: IO ()
 main = do
 --  testBots <- parseFile "input/Advent2018d23test.txt"
 --  putStrLn $ show $ solvePart1 testBots
-  bots <- parseFile "input/Advent2018d23jabbalaci.txt"
+  bots <- parseFile "input/Advent2018d23.txt"
 --  putStrLn $ show $ solvePart1 bots
   --testBots2 <- parseFile "input/Advent2018d23test2.txt"
   -- putStrLn $ show $ solvePart2 testBots2
