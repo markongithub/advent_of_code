@@ -7,12 +7,13 @@ import Data.Set (Set)
 import qualified Data.Set as Set
 import Debug.Trace (trace)
 
-data Nanobot = Nanobot { botX :: Int, botY :: Int, botZ :: Int, botR :: Int }
+data Nanobot = Nanobot { botCoords :: [Int], botR :: Int }
                  deriving (Eq, Show)
 
-distance :: (Int, Int, Int) -> Nanobot -> Int
-distance (x1, y1, z1) (Nanobot x2 y2 z2 _) =
-  (abs (x1 - x2)) + (abs (y1 - y2)) + (abs (z1 - z2))
+absDistance a b = abs (a - b)
+
+distance :: Coords -> Nanobot -> Int
+distance coords1 (Nanobot coords2 _) = sum $ zipWith absDistance coords1 coords2
 
 strongestBot :: [Nanobot] -> Nanobot
 strongestBot ls = maximumBy (\b1 b2 -> compare (botR b1) (botR b2)) ls
@@ -27,7 +28,7 @@ parseNanobot str = let
   zStr = takeWhile (/= '>') afterY
   rStr = drop 5 $ dropWhile (/= '>') afterY
   [xInt, yInt, zInt, r] = map (\s -> (read s :: Int)) [xStr, yStr, zStr, rStr]
-  in Nanobot xInt yInt zInt r
+  in Nanobot [xInt, yInt, zInt] r
 
 parseFile :: String -> IO [Nanobot]
 parseFile f = let
@@ -36,26 +37,24 @@ parseFile f = let
   in fmap parseText text
   
 nanobotsInRange :: [Nanobot] -> Nanobot -> Int
-nanobotsInRange ls (Nanobot xC yC zC rC) = let
-  filterFunc b2 = (distance (xC, yC, zC) b2) <= rC
+nanobotsInRange ls (Nanobot coords rC) = let
+  filterFunc b2 = (distance coords b2) <= rC
   in length $ filter filterFunc ls
 
 nanobotsInRangeOfSquare :: [Nanobot] -> Coords -> [Int]
-nanobotsInRangeOfSquare ls (x, y, z) = let
-  filterFunc (_, b2) = (distance (x, y, z) b2) <= botR b2
+nanobotsInRangeOfSquare ls coords = let
+  filterFunc (_, b2) = (distance coords b2) <= botR b2
   pairs = zip [0..] ls
   in map fst $ filter filterFunc pairs
 
 -- for every bot we are going to mark all the squares in its range
--- Map (Int, Int, Int) Int
-
 type SquareMap = Map Coords (Set Int)
 
 resizeBot :: (Int -> Int) -> Nanobot -> Nanobot
-resizeBot f (Nanobot x0 y0 z0 r0) =
-  Nanobot (f x0) (f y0) (f z0) (1 + (f r0))
+resizeBot f (Nanobot coords0 r0) =
+  Nanobot (map f coords0) (1 + (f r0))
 
-resizeRange :: (Int -> Int) -> Range3D -> Range3D
+resizeRange :: (Int -> Int) -> RangeND -> RangeND
 resizeRange f (a0, b0, c0, d0, e0, f0) = let
   [a1, b1, c1, d1, e1, f1] = map f [a0, b0, c0, d0, e0, f0]
   in (a1, b1, c1, d1, e1, f1)
@@ -65,7 +64,7 @@ resizeCoords f (x, y, z) = let
   [x2, y2, z2] = map f [x, y, z]
   in (x2, y2, z2)
 
-addBotToMap :: Int -> Range3D -> Int -> SquareMap -> Nanobot -> SquareMap
+addBotToMap :: Int -> RangeND -> Int -> SquareMap -> Nanobot -> SquareMap
 addBotToMap divisor shrunkenRange botID sMap bot = let
   shrunkenBot = resizeBot (`div` divisor) bot
   Nanobot x1 y1 z1 r1 = shrunkenBot
@@ -75,14 +74,14 @@ addBotToMap divisor shrunkenRange botID sMap bot = let
                                (Set.singleton botID) sMapI
   in trace1 $ foldl updateSquare sMap squares
 
-shrunkenMapFromBots :: Range3D -> Int -> [Nanobot] -> SquareMap
+shrunkenMapFromBots :: RangeND -> Int -> [Nanobot] -> SquareMap
 shrunkenMapFromBots range divisor bots = let
   range1 = trace ("divisor: " ++ show divisor) $ resizeRange (`div` divisor) range
   botsWithIDs = zip [0..] bots
   addPairToMap sMap (botID, bot) = addBotToMap divisor range1 botID sMap bot
   in foldl addPairToMap Map.empty botsWithIDs
 
-squareMapToRanges :: Range3D -> Int -> SquareMap -> [CandidateRange]
+squareMapToRanges :: RangeND -> Int -> SquareMap -> [CandidateRange]
 squareMapToRanges range divisor sMap = let
   modPair (coords, botSet) = CandidateRange (Set.size botSet)
                                (unshrinkSubrange range divisor coords)
@@ -98,7 +97,7 @@ listIndices ls indices = let
     | otherwise = listIndices0 xs (i:is) (curIndex + 1)
   in listIndices0 ls indices 0
 
-unshrinkSubrange :: Range3D -> Int -> Coords -> Range3D
+unshrinkSubrange :: RangeND -> Int -> Coords -> RangeND
 unshrinkSubrange oldRange divisor (x, y, z) = let
   (oldXMin, oldXMax, oldYMin, oldYMax, oldZMin, oldZMax) = oldRange
   newXMin = max (x * divisor) oldXMin
@@ -113,7 +112,7 @@ manhattanDistance :: Coords -> Int
 manhattanDistance (x, y, z) = abs x + abs y + abs z
 
 data CandidateCoords = CandidateCoords Int Coords deriving (Eq, Show)
-data CandidateRange = CandidateRange Int Range3D deriving (Eq, Show)
+data CandidateRange = CandidateRange Int RangeND deriving (Eq, Show)
 
 instance Ord CandidateCoords where
   compare (CandidateCoords b1 c1) (CandidateCoords b2 c2)
@@ -143,7 +142,7 @@ recurseAcross depth bots granularity cutoff bestSoFar sortedCandidates
         nextResult = recurseDown (depth + 1) bots granularity newCutoff nextCandidate
         newBest = max bestSoFar nextResult
 
-rangeToCoords :: Range3D -> Coords
+rangeToCoords :: RangeND -> Coords
 rangeToCoords (x1, x2, y1, y2, z1, z2)
   | (x1 /= x2) || (y1 /= y2) || (z1 /= z2) = error "cannot convert a wide range"
   | otherwise = (x1, y1, z1)
@@ -165,14 +164,14 @@ recurseDown depth bots granularity cutoff cRange
     bMap = betterSquareMap sMap
     candidates = squareMapToRanges range divisor bMap
 
-bruteForce :: [Nanobot] -> Range3D -> CandidateCoords
+bruteForce :: [Nanobot] -> RangeND -> CandidateCoords
 bruteForce bots range = let
   squares = squaresInRange range
   makeCandidate square = CandidateCoords (inRangeOfBots bots square) square
   candidates = map makeCandidate squares
   in maximum candidates
 
-maxRangeSize :: Range3D -> Int
+maxRangeSize :: RangeND -> Int
 maxRangeSize (a, b, c, d, e, f) = maximum [b-a, d-c, f-e]
 
 showMap :: SquareMap -> String
@@ -186,7 +185,7 @@ pairWithMaxSize sMap = let
   compareOnSndSize x y = compare (Set.size (snd x)) (Set.size (snd y))
   in maximumBy compareOnSndSize $ Map.toList sMap
 
-squaresInRadiusAndRange :: Coords -> Int -> Range3D -> [Coords]
+squaresInRadiusAndRange :: Coords -> Int -> RangeND -> [Coords]
 squaresInRadiusAndRange (x0, y0, z0) r (xMin, xMax, yMin, yMax, zMin, zMax) = let
   xMinOffset :: Int
   xMinOffset = max (-r) (xMin - x0)
@@ -217,7 +216,7 @@ betterSquareMap old = let
   in Map.fromList pairs
 
 
-squaresInRange :: Range3D -> [(Int, Int, Int)]
+squaresInRange :: RangeND -> [(Int, Int, Int)]
 squaresInRange (xMin, xMax, yMin, yMax, zMin, zMax) =
   [(xR, yR, zR) | xR <- [xMin..xMax],
                   yR <- [yMin..yMax],
@@ -234,12 +233,10 @@ solvePart1 ls = let
   strongest = strongestBot ls
   in nanobotsInRange ls strongest
 
-type Range3D = (Int, Int, Int, Int, Int, Int)
-type Coords = (Int, Int, Int)
+type Coords = [Int]
+data RangeND = RangeND [Int] [Int] deriving (Eq, Show)
 
-data RangeND = RangeND [Int] [Int]
-
-botRange :: [Nanobot] -> Range3D
+botRange :: [Nanobot] -> RangeND
 botRange bots = let
   botRange0 [] xMin xMax yMin yMax zMin zMax =
     (xMin, xMax, yMin, yMax, zMin, zMax)
