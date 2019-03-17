@@ -184,9 +184,9 @@ confusingCombinationsByPosition (lx:lxs) = let
 
 squaresInRadiusAndRange :: Coords -> Int -> RangeND -> [Coords]
 squaresInRadiusAndRange coords r (RangeND mins maxes) = let
-  makeMinOffset c min = max (-r) (min - c)
+  makeMinOffset c vMin = max (-r) (vMin - c)
   minOffsets = zipWith makeMinOffset coords mins
-  makeMaxOffset c max = min r (max - c)
+  makeMaxOffset c vMax = min r (vMax - c)
   maxOffsets = zipWith makeMaxOffset coords maxes
   makeMinMaxList vMin vMax = [vMin..vMax]
   deltaRanges = zipWith makeMinMaxList minOffsets maxOffsets
