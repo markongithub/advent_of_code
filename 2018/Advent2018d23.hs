@@ -3,7 +3,6 @@ module Main where
 import Data.List (maximumBy, sort)
 import Data.Map (Map)
 import qualified Data.Map as Map
-import qualified Data.Maybe as Maybe
 import Data.Set (Set)
 import qualified Data.Set as Set
 import Debug.Trace (trace, traceShow)
@@ -226,9 +225,7 @@ squaresInRange (xMin, xMax, yMin, yMax, zMin, zMax) =
                   zR <- [zMin..zMax]]
 
 inRangeOfBot :: (Int, Int, Int) -> Nanobot -> Bool
-inRangeOfBot (x0, y0, z0) bot = let
-  (Nanobot x1 y1 z1 r1) = bot
-  in (distance (x0, y0, z0) bot) <= r1
+inRangeOfBot (x0, y0, z0) bot = (distance (x0, y0, z0) bot) <= botR bot
 
 inRangeOfBots :: [Nanobot] -> (Int, Int, Int) -> Int
 inRangeOfBots bots coords = length $ filter (inRangeOfBot coords) bots
@@ -247,13 +244,13 @@ botRange :: [Nanobot] -> Range3D
 botRange bots = let
   botRange0 [] xMin xMax yMin yMax zMin zMax =
     (xMin, xMax, yMin, yMax, zMin, zMax)
-  botRange0 ((Nanobot x0 y0 z0 _):xs) xMin xMax yMin yMax zMin zMax = let
-    newXMin = min xMin x0
-    newXMax = max xMax x0
-    newYMin = min yMin y0
-    newYMax = max yMax y0
-    newZMin = min zMin z0
-    newZMax = max zMax z0
+  botRange0 ((Nanobot x1 y1 z1 _):xs) xMin xMax yMin yMax zMin zMax = let
+    newXMin = min xMin x1
+    newXMax = max xMax x1
+    newYMin = min yMin y1
+    newYMax = max yMax y1
+    newZMin = min zMin z1
+    newZMax = max zMax z1
     in botRange0 xs newXMin newXMax newYMin newYMax newZMin newZMax
   (Nanobot x0 y0 z0 _) = head bots
   in botRange0 (tail bots) x0 x0 y0 y0 z0 z0
