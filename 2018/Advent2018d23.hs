@@ -55,20 +55,17 @@ resizeBot f (Nanobot coords0 r0) =
   Nanobot (map f coords0) (1 + (f r0))
 
 resizeRange :: (Int -> Int) -> RangeND -> RangeND
-resizeRange f (a0, b0, c0, d0, e0, f0) = let
-  [a1, b1, c1, d1, e1, f1] = map f [a0, b0, c0, d0, e0, f0]
-  in (a1, b1, c1, d1, e1, f1)
+resizeRange f (RangeND mins maxes) = RangeND (map f mins) (map f maxes)
 
 resizeCoords :: (Int -> Int) -> Coords -> Coords
-resizeCoords f (x, y, z) = let
-  [x2, y2, z2] = map f [x, y, z]
-  in (x2, y2, z2)
+-- just apply the function to each element, so... map?
+resizeCoords = map
 
 addBotToMap :: Int -> RangeND -> Int -> SquareMap -> Nanobot -> SquareMap
 addBotToMap divisor shrunkenRange botID sMap bot = let
   shrunkenBot = resizeBot (`div` divisor) bot
-  Nanobot x1 y1 z1 r1 = shrunkenBot
-  squares = squaresInRadiusAndRange (x1, y1, z1) r1 shrunkenRange
+  Nanobot coords1 r1 = shrunkenBot
+  squares = squaresInRadiusAndRange coords1 r1 shrunkenRange
   trace1 foo = foo --trace (show (botID, bot) ++ " after shrinking can see " ++ show squares) foo
   updateSquare sMapI square = Map.insertWith Set.union square
                                (Set.singleton botID) sMapI
@@ -98,18 +95,15 @@ listIndices ls indices = let
   in listIndices0 ls indices 0
 
 unshrinkSubrange :: RangeND -> Int -> Coords -> RangeND
-unshrinkSubrange oldRange divisor (x, y, z) = let
-  (oldXMin, oldXMax, oldYMin, oldYMax, oldZMin, oldZMax) = oldRange
-  newXMin = max (x * divisor) oldXMin
-  newXMax = min ((x + 1) * divisor) oldXMax
-  newYMin = max (y * divisor) oldYMin
-  newYMax = min ((y + 1) * divisor) oldYMax
-  newZMin = max (z * divisor) oldZMin
-  newZMax = min ((z + 1) * divisor) oldZMax
-  in (newXMin, newXMax, newYMin, newYMax, newZMin, newZMax)
+unshrinkSubrange (RangeND oldMins oldMaxes) divisor shrunkenCoords = let
+  unshrinkMin oldMin shrunkenCoord = max (shrunkenCoord * divisor) oldMin
+  unshrinkMax oldMax shrunkenCoord = min ((shrunkenCoord + 1) * divisor) oldMax
+  newMins = zipWith unshrinkMin oldMins shrunkenCoords
+  newMaxes = zipWith unshrinkMax oldMaxes shrunkenCoords
+  in RangeND newMins newMaxes
   
 manhattanDistance :: Coords -> Int
-manhattanDistance (x, y, z) = abs x + abs y + abs z
+manhattanDistance coords = sum $ map abs coords
 
 data CandidateCoords = CandidateCoords Int Coords deriving (Eq, Show)
 data CandidateRange = CandidateRange Int RangeND deriving (Eq, Show)
@@ -143,10 +137,9 @@ recurseAcross depth bots granularity cutoff bestSoFar sortedCandidates
         newBest = max bestSoFar nextResult
 
 rangeToCoords :: RangeND -> Coords
-rangeToCoords (x1, x2, y1, y2, z1, z2)
-  | (x1 /= x2) || (y1 /= y2) || (z1 /= z2) = error "cannot convert a wide range"
-  | otherwise = (x1, y1, z1)
-
+rangeToCoords RangeND mins maxes
+  | mins /= maxes = error "cannot convert a wide range"
+  | otherwise = mins
 
 recurseDown :: Int -> [Nanobot] -> Int -> Int -> CandidateRange -> CandidateCoords
 recurseDown depth bots granularity cutoff cRange
@@ -159,7 +152,7 @@ recurseDown depth bots granularity cutoff cRange
     CandidateRange _ range = cRange
     rangeSize = maxRangeSize range
     divisor = rangeSize `div` granularity
-    nullCandidate = CandidateCoords (-1) (1979, 1979, 1979)
+    nullCandidate = CandidateCoords (-1) [1979, 1979, 1979]
     sMap = shrunkenMapFromBots range divisor bots
     bMap = betterSquareMap sMap
     candidates = squareMapToRanges range divisor bMap
@@ -172,7 +165,7 @@ bruteForce bots range = let
   in maximum candidates
 
 maxRangeSize :: RangeND -> Int
-maxRangeSize (a, b, c, d, e, f) = maximum [b-a, d-c, f-e]
+maxRangeSize (RangeND mins maxes) = maximum $ zipWith (-) maxes mins
 
 showMap :: SquareMap -> String
 showMap m = let
@@ -238,18 +231,13 @@ data RangeND = RangeND [Int] [Int] deriving (Eq, Show)
 
 botRange :: [Nanobot] -> RangeND
 botRange bots = let
-  botRange0 [] xMin xMax yMin yMax zMin zMax =
-    (xMin, xMax, yMin, yMax, zMin, zMax)
-  botRange0 ((Nanobot x1 y1 z1 _):xs) xMin xMax yMin yMax zMin zMax = let
-    newXMin = min xMin x1
-    newXMax = max xMax x1
-    newYMin = min yMin y1
-    newYMax = max yMax y1
-    newZMin = min zMin z1
-    newZMax = max zMax z1
-    in botRange0 xs newXMin newXMax newYMin newYMax newZMin newZMax
-  (Nanobot x0 y0 z0 _) = head bots
-  in botRange0 (tail bots) x0 x0 y0 y0 z0 z0
+  botRange0 [] oldRange = oldRange
+  botRange0 ((Nanobot coords _):xs) (RangeND oldMins oldMaxes) = let
+    newMins = zipWith min coords oldMins
+    newMaxes = zipWith max coords oldMaxes
+    in botRange0 xs (RangeND newMins newMaxes)
+  (Nanobot coords0 _) = head bots
+  in botRange0 (tail bots) (RangeND coords0 coords0)
 
 moreThanOneElem :: [a] -> Bool
 moreThanOneElem ls = null $ tail ls
