@@ -3,10 +3,9 @@ module Main where
 import Data.List (maximumBy, sort)
 import Data.Map (Map)
 import qualified Data.Map as Map
-import qualified Data.Maybe as Maybe
 import Data.Set (Set)
 import qualified Data.Set as Set
-import Debug.Trace (trace, traceShow)
+import Debug.Trace (trace)
 
 data Nanobot = Nanobot { botX :: Int, botY :: Int, botZ :: Int, botR :: Int }
                  deriving (Eq, Show)
@@ -67,20 +66,20 @@ resizeCoords f (x, y, z) = let
   in (x2, y2, z2)
 
 addBotToMap :: Int -> Range3D -> Int -> SquareMap -> Nanobot -> SquareMap
-addBotToMap divisor shrunkenRange botID map bot = let
+addBotToMap divisor shrunkenRange botID sMap bot = let
   shrunkenBot = resizeBot (`div` divisor) bot
   Nanobot x1 y1 z1 r1 = shrunkenBot
   squares = squaresInRadiusAndRange (x1, y1, z1) r1 shrunkenRange
   trace1 foo = foo --trace (show (botID, bot) ++ " after shrinking can see " ++ show squares) foo
   updateSquare mapI square = Map.insertWith Set.union square
                                (Set.singleton botID) mapI
-  in trace1 $ foldl updateSquare map squares
+  in trace1 $ foldl updateSquare sMap squares
 
 shrunkenMapFromBots :: Range3D -> Int -> [Nanobot] -> SquareMap
 shrunkenMapFromBots range divisor bots = let
   range1 = trace ("divisor: " ++ show divisor) $ resizeRange (`div` divisor) range
   botsWithIDs = zip [0..] bots
-  addPairToMap map (botID, bot) = addBotToMap divisor range1 botID map bot
+  addPairToMap sMap (botID, bot) = addBotToMap divisor range1 botID sMap bot
   in foldl addPairToMap Map.empty botsWithIDs
 
 squareMapToRanges :: Range3D -> Int -> SquareMap -> [CandidateRange]
@@ -138,8 +137,7 @@ recurseAcross depth bots granularity cutoff bestSoFar sortedCandidates
   | trace ("result of nextCandidate is " ++ show nextResult) False = undefined
   | otherwise = recurseAcross depth bots granularity newCutoff newBest (tail sortedCandidates)
   where nextCandidate = head sortedCandidates
-        CandidateRange nextBotCount nextRange = nextCandidate
-        nextRangeSize = maxRangeSize nextRange
+        CandidateRange nextBotCount _ = nextCandidate
         CandidateCoords bestBotCount _ = bestSoFar
         newCutoff = max cutoff bestBotCount    
         nextResult = recurseDown (depth + 1) bots granularity newCutoff nextCandidate
@@ -159,7 +157,7 @@ recurseDown depth bots granularity cutoff cRange
   | trace ("bMap: " ++ showMap bMap) False = undefined
   | otherwise = recurseAcross depth bots granularity cutoff nullCandidate candidates
   where
-    CandidateRange botCount range = cRange
+    CandidateRange _ range = cRange
     rangeSize = maxRangeSize range
     divisor = rangeSize `div` granularity
     nullCandidate = CandidateCoords (-1) (1979, 1979, 1979)
@@ -184,9 +182,9 @@ showMap m = let
   in show simplerPairs
 
 pairWithMaxSize :: SquareMap -> (Coords, Set Int)
-pairWithMaxSize map = let
+pairWithMaxSize sMap = let
   compareOnSndSize x y = compare (Set.size (snd x)) (Set.size (snd y))
-  in maximumBy compareOnSndSize $ Map.toList map
+  in maximumBy compareOnSndSize $ Map.toList sMap
 
 squaresInRadiusAndRange :: Coords -> Int -> Range3D -> [Coords]
 squaresInRadiusAndRange (x0, y0, z0) r (xMin, xMax, yMin, yMax, zMin, zMax) = let
