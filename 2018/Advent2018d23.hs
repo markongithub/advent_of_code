@@ -257,24 +257,20 @@ botRange bots = let
 moreThanOneElem :: [a] -> Bool
 moreThanOneElem ls = null $ tail ls
 
-solvePart2 :: [Nanobot] -> (Int, Coords, Int)
-solvePart2 bots = let
+solvePart2 :: [Nanobot] -> Int -> (Int, Coords, Int)
+solvePart2 bots cutoff = let
   range = botRange bots
   granularity = 2
-  solution = recurseDown 1 bots granularity 900 (CandidateRange (length bots) range)
+  solution = recurseDown 1 bots granularity cutoff (CandidateRange (length bots) range)
   CandidateCoords count coords = solution
   in (manhattanDistance coords, coords, count)
 
--- 98125627 is wrong but
--- 99843343 (914) is wrong
--- BUG: recurseDown: (900,CandidateRange 966 (11384343,22768686,56921715,68306058,22768687,34153029))
--- That is wrong, it should have at least 978.
 main :: IO ()
 main = do
---  testBots <- parseFile "input/Advent2018d23test.txt"
---  putStrLn $ show $ solvePart1 testBots
+  testBots <- parseFile "input/Advent2018d23test.txt"
+  putStrLn $ show $ solvePart1 testBots
   bots <- parseFile "input/Advent2018d23.txt"
---  putStrLn $ show $ solvePart1 bots
-  --testBots2 <- parseFile "input/Advent2018d23test2.txt"
-  -- putStrLn $ show $ solvePart2 testBots2
-  putStrLn $ show $ solvePart2 bots
+  putStrLn $ show $ solvePart1 bots
+  testBots2 <- parseFile "input/Advent2018d23test2.txt"
+  putStrLn $ show $ solvePart2 testBots2 0
+  putStrLn $ show $ solvePart2 bots 900
