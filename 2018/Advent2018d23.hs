@@ -137,7 +137,7 @@ recurseAcross depth bots granularity cutoff bestSoFar sortedCandidates
         newBest = max bestSoFar nextResult
 
 rangeToCoords :: RangeND -> Coords
-rangeToCoords RangeND mins maxes
+rangeToCoords (RangeND mins maxes)
   | mins /= maxes = error "cannot convert a wide range"
   | otherwise = mins
 
@@ -178,25 +178,33 @@ pairWithMaxSize sMap = let
   compareOnSndSize x y = compare (Set.size (snd x)) (Set.size (snd y))
   in maximumBy compareOnSndSize $ Map.toList sMap
 
+confusingCombinationsByPosition :: [[a]] -> [[a]]
+-- I want to take a list of possible first elements, a list of possible second
+-- elements, etc, and then make all the possible combinations given those
+-- constraints.
+confusingCombinationsByPosition [] = [[]]
+confusingCombinationsByPosition (lx:lxs) = let
+  tails = confusingCombinationsByPosition lxs
+  in [(h:t) | h <- lx, t <- tails]
+
 squaresInRadiusAndRange :: Coords -> Int -> RangeND -> [Coords]
-squaresInRadiusAndRange (x0, y0, z0) r (xMin, xMax, yMin, yMax, zMin, zMax) = let
-  xMinOffset :: Int
-  xMinOffset = max (-r) (xMin - x0)
-  xMaxOffset :: Int
-  xMaxOffset = min r (xMax - x0)
-  xdRange :: [Int]
-  xdRange = [xMinOffset..xMaxOffset]
-  yMinOffset = max (-r) (yMin - y0)
-  yMaxOffset = min r (yMax - y0)
-  zMinOffset = max (-r) (zMin - z0)
-  zMaxOffset = min r (zMax - z0)
-  in [(x0 + xd, y0 + yd, z0 + zd) | xd <- xdRange,
-                                    yd <- [yMinOffset..yMaxOffset],
-                                    zd <- [zMinOffset..zMaxOffset],
-                                    (abs xd + abs yd + abs zd) <= r ]
+squaresInRadiusAndRange coords r (RangeND mins maxes) = let
+  makeMinOffset c min = max (-r) (min - c)
+  minOffsets = zipWith makeMinOffset coords mins
+  makeMaxOffset c max = min r (max - c)
+  maxOffsets = zipWith makeMaxOffset coords maxes
+  makeMinMaxList vMin vMax = [vMin..vMax]
+  deltaRanges = zipWith makeMinMaxList minOffsets maxOffsets
+  allPossibleDeltas = confusingCombinationsByPosition deltaRanges
+  deltaRangesInRadius = filter (\c -> manhattanDistance c <= r)
+                          allPossibleDeltas
+  deltaRangeToCoords dRange = zipWith (+) coords dRange
+  in map deltaRangeToCoords deltaRangesInRadius
 
 squaresToCheckForCube :: Coords -> [Coords]
-squaresToCheckForCube (x, y, z) = squaresInRange (x, x+1, y, y+1, z, z+1)
+squaresToCheckForCube coords = let
+  higherCoords = map (+1) coords
+  in squaresInRange (RangeND coords higherCoords)
 
 betterSquareMap :: SquareMap -> SquareMap
 betterSquareMap old = let
@@ -208,17 +216,17 @@ betterSquareMap old = let
   pairs = map makePair $ Map.keys old
   in Map.fromList pairs
 
+squaresInRange :: RangeND -> [Coords]
+squaresInRange (RangeND mins maxes) = let
+  makeList rMin rMax = [rMin..rMax]
+  listOfRanges = zipWith makeList mins maxes
+  -- now I have a LoL [[xMin...xMax], [yMin..yMax]... etc]
+  in confusingCombinationsByPosition listOfRanges
 
-squaresInRange :: RangeND -> [(Int, Int, Int)]
-squaresInRange (xMin, xMax, yMin, yMax, zMin, zMax) =
-  [(xR, yR, zR) | xR <- [xMin..xMax],
-                  yR <- [yMin..yMax],
-                  zR <- [zMin..zMax]]
+inRangeOfBot :: Coords -> Nanobot -> Bool
+inRangeOfBot coords bot = (distance coords bot) <= botR bot
 
-inRangeOfBot :: (Int, Int, Int) -> Nanobot -> Bool
-inRangeOfBot (x0, y0, z0) bot = (distance (x0, y0, z0) bot) <= botR bot
-
-inRangeOfBots :: [Nanobot] -> (Int, Int, Int) -> Int
+inRangeOfBots :: [Nanobot] -> Coords -> Int
 inRangeOfBots bots coords = length $ filter (inRangeOfBot coords) bots
 
 solvePart1 :: [Nanobot] -> Int
