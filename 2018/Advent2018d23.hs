@@ -66,7 +66,7 @@ resizeCoords :: (Int -> Int) -> Coords -> Coords
 -- just apply the function to each element, so... map?
 resizeCoords = map
 
-addBotToMap :: Int -> Range3D -> Int -> SquareMap -> Nanobot -> SquareMap
+addBotToMap :: Int -> RangeND -> Int -> SquareMap -> Nanobot -> SquareMap
 addBotToMap divisor shrunkenRange botID sMap bot = let
   shrunkenBot = resizeBot (`div` divisor) bot
   Nanobot coords1 r1 = shrunkenBot
