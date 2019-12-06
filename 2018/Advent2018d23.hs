@@ -239,17 +239,17 @@ botRange bots = let
 solvePart2 :: [Nanobot] -> Int -> (Int, Coords, Int)
 solvePart2 bots cutoff = let
   range = botRange bots
-  granularity = 2
+  granularity = 2 -- 10 too high
   solution = recurseDown 1 bots granularity cutoff (CandidateRange (length bots) range)
   CandidateCoords count coords = solution
   in (manhattanDistance coords, coords, count)
 
 main :: IO ()
 main = do
-  testBots <- parseFile "input/Advent2018d23test.txt"
-  putStrLn $ show $ solvePart1 testBots
-  bots <- parseFile "input/Advent2018d23.txt"
-  putStrLn $ show $ solvePart1 bots
+--  testBots <- parseFile "input/Advent2018d23test.txt"
+--  putStrLn $ show $ solvePart1 testBots
+--  bots <- parseFile "input/Advent2018d23.txt"
+--  putStrLn $ show $ solvePart1 bots
   testBots2 <- parseFile "input/Advent2018d23test2.txt"
   putStrLn $ show $ solvePart2 testBots2 0
-  putStrLn $ show $ solvePart2 bots 900
+  -- putStrLn $ show $ solvePart2 bots 900
