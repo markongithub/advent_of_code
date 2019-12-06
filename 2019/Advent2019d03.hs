@@ -24,8 +24,8 @@ parseSegment :: String -> [Coords]
 parseSegment str = let
   offset = parseDirection $ head str
   lengthStr = tail str
-  length = (read lengthStr :: Int)
-  in take length (repeat offset)
+  segLength = (read lengthStr :: Int)
+  in take segLength (repeat offset)
 
 initialState = WireState (0,0) Map.empty 0
 
