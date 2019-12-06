@@ -1,12 +1,12 @@
 module Main where
 
 import Data.List (minimumBy)
-import Data.Set (Set)
-import qualified Data.Set as Set
+import Data.Map (Map)
+import qualified Data.Map as Map
 
 type Coords = (Int, Int)
-type WireTrail = Set Coords
-data WireState = WireState { position :: Coords, trail :: WireTrail }
+type WireTrail = Map Coords Int
+data WireState = WireState { position :: Coords, trail :: WireTrail, length :: Int}
 
 addCoords :: Coords -> Coords -> Coords
 addCoords (x1, y1) (x2, y2) = (x1 + x2, y1 + y2)
@@ -27,13 +27,14 @@ parseSegment str = let
   length = (read lengthStr :: Int)
   in take length (repeat offset)
 
-initialState = WireState (0,0) Set.empty
+initialState = WireState (0,0) Map.empty 0
 
 addOffsetToState :: WireState -> Coords -> WireState
-addOffsetToState (WireState oldPos oldTrail) offset = let
+addOffsetToState (WireState oldPos oldTrail oldLength) offset = let
   newPos = addCoords oldPos offset
-  newTrail = Set.insert newPos oldTrail
-  in WireState newPos newTrail
+  newLength = oldLength + 1
+  newTrail = Map.insert newPos newLength oldTrail
+  in WireState newPos newTrail newLength
 
 addOffsetsToState :: WireState -> [Coords] -> WireState
 addOffsetsToState oldState offsets = foldl addOffsetToState oldState offsets
@@ -61,11 +62,12 @@ traceFullWire str = let
   allCoords = parseWire str
   in foldl addOffsetsToState initialState allCoords
 
-findConflicts :: String -> String -> Set Coords
+findConflicts :: String -> String -> [(Coords, Int)]
 findConflicts str1 str2 = let
-  WireState _ set1 = traceFullWire str1
-  WireState _ set2 = traceFullWire str2
-  in Set.intersection set1 set2
+  WireState _ map1 _ = traceFullWire str1
+  WireState _ map2 _ = traceFullWire str2
+  map3 = Map.intersectionWith (+) map1 map2
+  in Map.toList map3
 
 manhattanDistance :: Coords -> Int
 manhattanDistance (x, y) = abs x + abs y
@@ -73,7 +75,7 @@ manhattanDistance (x, y) = abs x + abs y
 closestConflict str1 str2 = let
   allConflicts = findConflicts str1 str2
   stupidFunc x y = compare (manhattanDistance x) (manhattanDistance y)
-  in minimumBy stupidFunc $ Set.toList allConflicts
+  in minimumBy stupidFunc $ map fst allConflicts
 
 solvePart1 str1 str2 = manhattanDistance $ closestConflict str1 str2
 
