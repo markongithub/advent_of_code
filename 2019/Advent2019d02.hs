@@ -6,27 +6,27 @@ import qualified Data.Map as Map
 
 runP1Example :: [Int] -> [Int]
 runP1Example l = let
-  IntCodeState finalMemory _ = processNextInstruction $ initialStateFromList l
+  IntCodeState finalMemory _ _ _ = processNextInstruction $ initialStateFromList l []
   in Map.elems finalMemory
 
 solvePart1 :: [Int] -> [Int]
 solvePart1 l = let
-  IntCodeState finalMemory _ = processNextInstruction $ inputNounVerb 12 2 $ initialStateFromList l
+  IntCodeState finalMemory _ _ _ = processNextInstruction $ inputNounVerb 12 2 $ initialStateFromList l []
   in Map.elems finalMemory
 
 inputNounVerb :: Int -> Int -> IntCodeState -> IntCodeState
-inputNounVerb noun verb (IntCodeState m c) = let
+inputNounVerb noun verb (IntCodeState m i input output) = let
   newMemory = Map.insert 2 verb $ Map.insert 1 noun m
-  in IntCodeState newMemory c
+  in IntCodeState newMemory i input output
 
 tryPair :: IntCodeState -> (Int, Int) -> Int
 tryPair state (noun, verb) = let
-  (IntCodeState resultMemory _) = processNextInstruction $ inputNounVerb noun verb state
+  (IntCodeState resultMemory _ _ _) = processNextInstruction $ inputNounVerb noun verb state
   in resultMemory!0
 
 solvePart2 :: Int
 solvePart2 = let
-  initialState = initialStateFromList puzzleInput
+  initialState = initialStateFromList puzzleInput []
   allPairs = [ (noun,verb) | noun<-[0..99], verb<-[0..99] ]
   isSolution :: (Int, Int) -> Bool
   isSolution (noun, verb) = tryPair initialState (noun, verb) == 19690720
