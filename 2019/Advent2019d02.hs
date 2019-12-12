@@ -1,6 +1,5 @@
 module Main where
 
--- import Data.List (minimumBy)
 import Data.Map (Map, (!))
 import qualified Data.Map as Map
 -- import Debug.Trace (trace)
@@ -47,6 +46,21 @@ inputNounVerb noun verb (IntCodeState m c) = let
   newMemory = Map.insert 2 verb $ Map.insert 1 noun m
   in IntCodeState newMemory c
 
+tryPair :: IntCodeState -> (Int, Int) -> Int
+tryPair state (noun, verb) = let
+  (IntCodeState resultMemory _) = processNextInstruction $ inputNounVerb noun verb state
+  in resultMemory!0
+
+solvePart2 :: Int
+solvePart2 = let
+  initialState = initialStateFromList puzzleInput
+  allPairs = [ (noun,verb) | noun<-[0..99], verb<-[0..99] ]
+  isSolution :: (Int, Int) -> Bool
+  isSolution (noun, verb) = tryPair initialState (noun, verb) == 19690720
+  (solutionN, solutionV) = head $ filter isSolution allPairs -- will crash if there isn't one
+  in (100 * solutionN) + solutionV
+
+
 example1 = [1,9,10,3,2,3,11,0,99,30,40,50]
 example2 = [1,0,0,0,99]
 example3 = [2,3,0,3,99]
@@ -61,3 +75,4 @@ main = do
   putStrLn $ show $ runP1Example example4
   putStrLn $ show $ runP1Example example5
   putStrLn $ show $ solvePart1 puzzleInput
+  putStrLn $ show $ solvePart2
