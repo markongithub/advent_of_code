@@ -5,13 +5,13 @@ import qualified Data.Map as Map
 -- import Debug.Trace (trace)
 
 data IntCodeState = IntCodeState { memoryMap :: Map Int Int
-                                 , current :: Int }
+                                 , instructionPointer :: Int }
 
 processNextInstruction :: IntCodeState -> IntCodeState
 processNextInstruction state = let
-  IntCodeState m c = state
-  -- nextInstruction = trace (show $ Map.elems m) m!c -- this should not fail in these problems
-  nextInstruction = m!c -- this should not fail in these problems
+  IntCodeState m i = state
+  -- nextInstruction = trace (show $ Map.elems m) m!i -- this should not fail in these problems
+  nextInstruction = m!i -- this should not fail in these problems
   in case nextInstruction of
        99 -> state
        1  -> processMathInstruction state (+)
@@ -19,11 +19,11 @@ processNextInstruction state = let
        _  -> error "Unexpected instruction code"
 
 processMathInstruction :: IntCodeState -> (Int -> Int -> Int) -> IntCodeState
-processMathInstruction (IntCodeState m c) op = let
-  result = (m!(m!(c+1))) `op` (m!(m!(c+2)))
-  newLocation = m!(c+3)
+processMathInstruction (IntCodeState m i) op = let
+  result = (m!(m!(i+1))) `op` (m!(m!(i+2)))
+  newLocation = m!(i+3)
   newMemory = Map.insert newLocation result m
-  nextInstruction = c+4
+  nextInstruction = i+4
   in processNextInstruction (IntCodeState newMemory nextInstruction)
 
 initialStateFromList :: [Int] -> IntCodeState
