@@ -39,12 +39,12 @@ runP1Example l = let
 
 solvePart1 :: [Int] -> [Int]
 solvePart1 l = let
-  IntCodeState finalMemory _ = processNextInstruction $ restoreState $ initialStateFromList l
+  IntCodeState finalMemory _ = processNextInstruction $ inputNounVerb 12 2 $ initialStateFromList l
   in Map.elems finalMemory
 
-restoreState :: IntCodeState -> IntCodeState
-restoreState (IntCodeState m c) = let
-  newMemory = Map.insert 2 2 $ Map.insert 1 12 m
+inputNounVerb :: Int -> Int -> IntCodeState -> IntCodeState
+inputNounVerb noun verb (IntCodeState m c) = let
+  newMemory = Map.insert 2 verb $ Map.insert 1 noun m
   in IntCodeState newMemory c
 
 example1 = [1,9,10,3,2,3,11,0,99,30,40,50]
