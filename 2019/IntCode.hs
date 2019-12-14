@@ -2,7 +2,7 @@ module IntCode where
 
 import Data.Map (Map, (!))
 import qualified Data.Map as Map
--- import Debug.Trace (trace)
+import Debug.Trace (trace)
 
 data IntCodeState = IntCodeState { memoryMap :: Map Int Int
                                  , instructionPointer :: Int
@@ -11,7 +11,7 @@ data IntCodeState = IntCodeState { memoryMap :: Map Int Int
 
 processNextInstruction :: IntCodeState -> IntCodeState
 processNextInstruction state = let
-  -- IntCodeState m i _ _ = trace (show $ Map.elems (memoryMap state)) state
+  -- IntCodeState m i _ _ = trace (show (instructionPointer state, Map.elems (memoryMap state))) state
   IntCodeState m i _ _ = state
   nextOpCode = m!i -- this should not fail in these problems
   (actualOpCode, immediates) = parseOpCode nextOpCode
@@ -88,8 +88,6 @@ processImmediateCodes0 count value accu = let
     1 -> True
     0 -> False
     _ -> error "Unexpected immediate digit"
-  -- These are given to us backwards, but I am assembling the list backwards,
-  -- so the list should go forwards?
   in processImmediateCodes0 (count - 1) remainingDigits (nextBool:accu)
 
 parseOpCode :: Int -> (Int, [Bool])
@@ -97,5 +95,5 @@ parseOpCode opCode = let
   actualOpCode = opCode `mod` 100
   immediateDigits = opCode `div` 100
   expectedParameters = parameterCount actualOpCode
-  immediateBools = processImmediateCodes0 expectedParameters immediateDigits []
+  immediateBools = reverse $ processImmediateCodes0 expectedParameters immediateDigits []
   in (actualOpCode, immediateBools)
