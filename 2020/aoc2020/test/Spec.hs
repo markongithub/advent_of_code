@@ -1,14 +1,12 @@
-import Test.QuickCheck
+import Test.Tasty (defaultMain, testGroup, TestTree)
+import Test.Tasty.HUnit (assertEqual, testCase)
+
 import Day01
 
-prop_sumDigits :: NonNegative Int -> Bool
-prop_sumDigits (NonNegative i)
-  | i < 10 = sumDigits str == i
-  | i >= 10 && i < 100 = sumDigits str == (i `div` 10 + i `mod` 10)
-  | otherwise = True
-  where str = show i
+checkSum :: (Int, String) -> TestTree
+checkSum (expected, input) = testCase []
+  (assertEqual [] expected (sumDigits input))
 
-main :: IO ()
-main = do
-  verboseCheck prop_sumDigits
-  putStrLn "Done"
+allTests = map checkSum [(6, "123")]
+
+main = defaultMain $ testGroup [] allTests
