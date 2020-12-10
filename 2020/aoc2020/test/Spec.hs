@@ -8,6 +8,7 @@ day1TestData = [1721,979,366,299,675,1456]
 day1Test = testCase []
   (assertEqual [] 514579 (productOf2020Sums day1TestData))
 
-allTests = [day1Test]
-
-main = defaultMain $ testGroup [] allTests
+main = do
+  day1Solution1 <- solvePart1
+  let day1SolutionTest = testCase [] (assertEqual [] 55776 day1Solution1)
+  defaultMain $ testGroup [] [day1Test, day1SolutionTest]

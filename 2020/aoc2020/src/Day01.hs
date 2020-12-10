@@ -17,3 +17,14 @@ productOf2020Sums :: [Int] -> Int
 productOf2020Sums xs = let
   (x,y) = head $ filter sumsTo2020 $ allPairs xs
   in x * y
+
+parseFile :: String -> IO [Int]
+parseFile f = let
+  strs = readFile f
+  parseInts xs = map (\s -> read s :: Int) $ lines xs
+  in fmap parseInts strs
+
+solvePart1 :: IO Int
+solvePart1 = let
+  input = parseFile "data/input01.txt"
+  in fmap productOf2020Sums input
