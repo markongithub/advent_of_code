@@ -3,10 +3,11 @@ import Test.Tasty.HUnit (assertEqual, testCase)
 
 import Day01
 
-checkSum :: (Int, String) -> TestTree
-checkSum (expected, input) = testCase []
-  (assertEqual [] expected (sumDigits input))
+day1TestData = [1721,979,366,299,675,1456]
 
-allTests = map checkSum [(6, "123")]
+day1Test = testCase []
+  (assertEqual [] 514579 (productOf2020Sums day1TestData))
+
+allTests = [day1Test]
 
 main = defaultMain $ testGroup [] allTests
