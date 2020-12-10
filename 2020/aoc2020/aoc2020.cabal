@@ -25,21 +25,9 @@ library
       base >=4.7 && <5
   default-language: Haskell2010
 
---executable aoc2020-exe
---  main-is: Main.hs
---  other-modules:
---      Paths_aoc2020
---  hs-source-dirs:
---      app
---  ghc-options: -threaded -rtsopts -with-rtsopts=-N
---  build-depends:
---      aoc2020
---    , base >=4.7 && <5
---  default-language: Haskell2010
-
-test-suite aoc2020-test
+test-suite day01test
   type: exitcode-stdio-1.0
-  main-is: Spec.hs
+  main-is: Day01Test.hs
   other-modules:
       Paths_aoc2020
   hs-source-dirs:
