@@ -28,3 +28,23 @@ solvePart1 :: IO Int
 solvePart1 = let
   input = parseFile "data/input01.txt"
   in fmap productOf2020Sums input
+
+allTriples :: [a] -> [(a,a,a)]
+allTriples [a,b,c] = [(a,b,c)]
+allTriples (x:xs) = let
+  withX = map (\(y,z) -> (x,y,z)) $ allPairs xs
+  withoutX = allTriples xs
+  in withX ++ withoutX
+
+productOf2020TripleSum :: [Int] -> Int
+productOf2020TripleSum xs = let
+  sumsTo2020Triple (x,y,z) = x + y + z == 2020
+  (x,y,z) = head $ filter sumsTo2020Triple $ allTriples xs
+  in x * y * z
+
+solvePart2 :: IO Int
+solvePart2 = let
+  input = parseFile "data/input01.txt"
+  in fmap productOf2020TripleSum input
+
+
