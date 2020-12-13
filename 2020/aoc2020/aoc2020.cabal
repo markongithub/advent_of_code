@@ -17,6 +17,7 @@ source-repository head
 library
   exposed-modules:
       Day01
+      Day12
   other-modules:
       Paths_aoc2020
   hs-source-dirs:
@@ -28,6 +29,21 @@ library
 test-suite day01test
   type: exitcode-stdio-1.0
   main-is: Day01Test.hs
+  other-modules:
+      Paths_aoc2020
+  hs-source-dirs:
+      test
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      aoc2020
+    , base >=4.7 && <5
+    , tasty
+    , tasty-hunit
+  default-language: Haskell2010
+
+test-suite day12test
+  type: exitcode-stdio-1.0
+  main-is: Day12Test.hs
   other-modules:
       Paths_aoc2020
   hs-source-dirs:
