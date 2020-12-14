@@ -60,17 +60,6 @@ solvePart1 = do
 sortByFstDesc :: (Ord a) => [(a, b)] -> [(a, b)]
 sortByFstDesc ls = sortBy (\(d1, _) (d2, _) -> compare d2 d1) ls
 
-checkTimestampForBus :: Int -> (Int, Int) -> Bool
-checkTimestampForBus timestamp (busID, offset) =
-  timestamp `mod` busID == ((busID - offset) `mod` busID)
-
-checkTimestampForAllBuses :: [(Int, Int)] -> Int -> Bool
-checkTimestampForAllBuses buses timestamp =
-  all (checkTimestampForBus timestamp) buses
-
-candidateTimestamps :: (Int, Int) -> [Int]
-candidateTimestamps (busID, offset) = map (\k -> (busID - offset) + (busID * k)) [0..]
-
 busToSaneOffset :: (Int, Int) -> (Int, Int)
 busToSaneOffset (busID, offset) = let
   offset2 = offset `mod` busID
@@ -79,16 +68,9 @@ busToSaneOffset (busID, offset) = let
     _ -> busID - offset2
   in (busID, offset3)
 
--- lists must be ordered
-leastCommonElement :: (Ord a) => [a] -> [a] -> a
-leastCommonElement (x:xs) (y:ys)
-  | x == y    = x
-  | x > y     = leastCommonElement (x:xs) (dropWhile (< x) (y:ys))
-  | otherwise = leastCommonElement (dropWhile (< y) xs) (y:ys)
-
 mergeTwoOffsets :: (Int, Int) -> (Int, Int) -> (Int, Int)
 mergeTwoOffsets (a, x) (b, y) = let
-  candidates = map (\k -> (k*a) + x) [0..b]
+  candidates = map (\k -> (k*a) + x) [0..]
   selector c = c `mod` b == y
   newOffset = head $ filter selector candidates
   in (a * b, newOffset)
@@ -101,13 +83,6 @@ earliestCorrectTimestamp buses = let
   saneOffsets = map busToSaneOffset (sortByFstDesc buses)
   in snd $ mergeOffsets saneOffsets
   
---earliestCorrectTimestamp buses = let
---  sortedBuses = sortByFstDesc buses
---  maxBus = head sortedBuses
---  otherBuses = tail sortedBuses
---  correctTimestamps = filter (checkTimestampForAllBuses otherBuses) (candidateTimestamps maxBus)
---  in head correctTimestamps
-
 solvePart2Pure :: String -> Int
 solvePart2Pure busLine = earliestCorrectTimestamp $ parseBusLine busLine
 
@@ -117,4 +92,3 @@ solvePart2 = do
   let busLine = (lines text)!!1
   putStrLn (show $ sortByFstDesc $ parseBusLine busLine)
   return $ solvePart2Pure busLine
-

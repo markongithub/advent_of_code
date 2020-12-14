@@ -15,22 +15,13 @@ buses = parseBusLine "7,x,13"
 sortedBuses = sortByFstDesc buses
 maxBus = head sortedBuses
 otherBuses = tail sortedBuses
-candidates = candidateTimestamps maxBus
-correctTimestamps = filter (checkTimestampForAllBuses otherBuses) candidates
 
 testOffsets = map busToSaneOffset [(661,44),(641,13),(41,3),(37,50),(29,42),(23,67),(19,25),(17,30),(13,0)]
 
 purePart2Tests = [
-    testCase [] (assertEqual [] [7,14,21] (take 3 $ candidateTimestamps (7,0)))
-  , testCase [] (assertEqual [] [11,24,37,50,63] (take 5 $ candidates))
-  , testCase [] (assertEqual [] True (checkTimestampForBus 38 (13, 1)))
-  , testCase [] (assertEqual [] False (checkTimestampForBus 40 (13, 1)))
-  , testCase [] (assertEqual [] [(13,2),(7,0)] (parseBusLine "7,x,13"))
+    testCase [] (assertEqual [] [(13,2),(7,0)] (parseBusLine "7,x,13"))
   , testCase [] (assertEqual [] (13,2) maxBus)
   , testCase [] (assertEqual [] [(7,0)] otherBuses)
-  , testCase [] (assertEqual [] True (checkTimestampForBus 63 (7,0)))
-  , testCase [] (assertEqual [] True (checkTimestampForAllBuses otherBuses 63))
-  , testCase [] (assertEqual [] [False,False,False,False,True] (map (checkTimestampForAllBuses otherBuses) (take 5 candidates)))
   , testCase [] (assertEqual [] (13,2) (head $ sortByFstDesc $ parseBusLine "7,x,13"))
   , testCase [] (assertEqual [] 63 (earliestCorrectTimestamp $ parseBusLine "7,x,13"))
   , testCase [] (assertEqual [] (91,76) (mergeTwoOffsets (13,11) (7,6)))
@@ -48,6 +39,7 @@ main = do
   day13Solution1 <- solvePart1
   let day13Solution1Test = testCase [] (assertEqual [] 3966 day13Solution1)
   day13Solution2 <- solvePart2
-  let day13Solution2Test = testCase [] (assertEqual [] 800177252346225 day13Solution2)
+  let day13Solution2Test = testCase [] (assertEqual []
+                                        800177252346225 day13Solution2)
   defaultMain $ testGroup []
     ([day13Test1, day13Solution1Test] ++ purePart2Tests ++ [day13Solution2Test])
