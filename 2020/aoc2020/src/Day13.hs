@@ -3,11 +3,7 @@ module Day13 where
 import Data.List (minimumBy, sortBy)
 
 waitForBus :: Int -> Int -> Int
-waitForBus timestamp bus = let
-  remainder = timestamp `mod` bus
-  in case remainder of
-    0 -> 0
-    _ -> bus - remainder
+waitForBus timestamp bus = (-timestamp) `mod` bus
 
 earliestBusTimesWait :: Int -> [Int] -> Int
 earliestBusTimesWait timestamp buses = let
@@ -62,11 +58,8 @@ sortByFstDesc ls = sortBy (\(d1, _) (d2, _) -> compare d2 d1) ls
 
 busToSaneOffset :: (Int, Int) -> (Int, Int)
 busToSaneOffset (busID, offset) = let
-  offset2 = offset `mod` busID
-  offset3 = case offset2 of
-    0 -> 0
-    _ -> busID - offset2
-  in (busID, offset3)
+  newOffset = (-offset) `mod` busID
+  in (busID, newOffset)
 
 mergeTwoOffsets :: (Int, Int) -> (Int, Int) -> (Int, Int)
 mergeTwoOffsets (a, x) (b, y) = let
