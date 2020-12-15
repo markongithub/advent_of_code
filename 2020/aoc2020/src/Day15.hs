@@ -15,7 +15,7 @@ data GameState = GameState { startingNumbersAcc :: [Int]
 speakNextNumber :: GameState -> (Int, GameState)
 speakNextNumber (GameState starting next currentTurn memory) = let
   debugStr = ("turn " ++ show currentTurn ++ " map size " ++ show (Map.size memory))
-  nextTurn = if (currentTurn `mod` 10000 == 0) then (trace debugStr (currentTurn + 1)) else (currentTurn + 1)
+  nextTurn = (currentTurn + 1) -- if (currentTurn `mod` 10000 == 0) then (trace debugStr (currentTurn + 1)) else (currentTurn + 1)
   (spokenNumber, nextStarting) = case starting of
     []     -> (next, [])
     (x:xs) -> (x,xs)
@@ -65,5 +65,5 @@ day15Input = "1,2,16,19,18,0"
 solvePart1 :: Int
 solvePart1 = solvePart1Func day15Input
 
-solvePart2Func input = nthWord 5000000 input
+solvePart2Func input = nthWord 30000000 input
 solvePart2 = solvePart2Func day15Input
