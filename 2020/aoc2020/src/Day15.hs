@@ -4,6 +4,7 @@ import Common
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Char (digitToInt)
+import Debug.Trace (trace)
 
 data GameState = GameState { startingNumbersAcc :: [Int]
                            , nextSpokenAcc :: Int
@@ -13,6 +14,8 @@ data GameState = GameState { startingNumbersAcc :: [Int]
 
 speakNextNumber :: GameState -> (Int, GameState)
 speakNextNumber (GameState starting next currentTurn memory) = let
+  debugStr = ("turn " ++ show currentTurn ++ " map size " ++ show (Map.size memory))
+  nextTurn = if (currentTurn `mod` 10000 == 0) then (trace debugStr (currentTurn + 1)) else (currentTurn + 1)
   (spokenNumber, nextStarting) = case starting of
     []     -> (next, [])
     (x:xs) -> (x,xs)
@@ -20,8 +23,11 @@ speakNextNumber (GameState starting next currentTurn memory) = let
     Nothing -> 0
     Just t  -> (currentTurn - t)
   newMemory = Map.insert spokenNumber currentTurn memory
-  nextState = GameState nextStarting nextSpoken (currentTurn + 1) newMemory
+  nextState = GameState nextStarting nextSpoken nextTurn newMemory
   in (spokenNumber, nextState)
+
+silentTurn :: GameState -> GameState
+silentTurn state = snd $ speakNextNumber state
     
 spokenNumbers :: GameState -> [Int]
 spokenNumbers old = let
@@ -42,9 +48,22 @@ spokenNumbersFromInput input = let
   startingNumbers = parseInput input
   in spokenNumbers (initialState startingNumbers)
 
+stateAfterNWords :: Int -> String -> GameState
+stateAfterNWords n input = let
+  startingNumbers = parseInput input
+  in head $ drop (n-1) $ iterate silentTurn (initialState startingNumbers)
+
+nthWord :: Int -> String -> Int
+nthWord n input = let
+  finalState = stateAfterNWords n input
+  in nextSpokenAcc $ finalState
+
 solvePart1Func :: String -> Int
-solvePart1Func input = (spokenNumbersFromInput input)!!2019
+solvePart1Func input = nthWord 2020 input
 
 day15Input = "1,2,16,19,18,0"
 solvePart1 :: Int
 solvePart1 = solvePart1Func day15Input
+
+solvePart2Func input = nthWord 5000000 input
+solvePart2 = solvePart2Func day15Input

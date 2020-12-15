@@ -38,7 +38,7 @@ test-suite day15test
       Paths_aoc2020
   hs-source-dirs:
       test
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N -O2
   build-depends:
       aoc2020
     , base >=4.7 && <5
