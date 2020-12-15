@@ -16,6 +16,7 @@ source-repository head
 
 library
   exposed-modules:
+      Common
       Day01
       Day12
       Day13
