@@ -7,7 +7,7 @@ import Data.Char (digitToInt)
 import Debug.Trace (trace)
 
 data GameState = GameState { startingNumbersAcc :: [Int]
-                           , nextAgeAcc :: Int
+                           , nextAgeAcc :: !Int
                            , currentTurnAcc :: Int
                            , memoryAcc :: Map Int Int
                            } deriving (Eq, Show)
@@ -15,7 +15,7 @@ data GameState = GameState { startingNumbersAcc :: [Int]
 advanceGame :: GameState -> GameState
 advanceGame (GameState starting next currentTurn memory) = let
   debugStr = ("turn " ++ show currentTurn ++ " speaking " ++ show next) --  ++ " map max " ++ show (maximum $ Map.elems memory))
-  nextTurn = if (currentTurn `mod` 1000000 == 0) then (trace debugStr (currentTurn + 1)) else (currentTurn + 1)
+  nextTurn = currentTurn + 1 -- if (currentTurn `mod` 1000000 == 0) then (trace debugStr (currentTurn + 1)) else (currentTurn + 1)
   (spokenNumber, nextStarting) = case starting of
     []     -> (next, [])
     (x:xs) -> (x,xs)
@@ -38,7 +38,7 @@ spokenNumbers old = let
   in (next:(spokenNumbers new))
 
 initialState :: [Int] -> GameState
-initialState starting = GameState starting undefined 1 Map.empty
+initialState starting = GameState starting (-999) 1 Map.empty
 
 parseInput :: String -> [Int]
 parseInput s = let
@@ -55,7 +55,7 @@ iterateQuiet :: Int -> (GameState -> GameState) -> GameState -> GameState
 iterateQuiet 0 _ x = x
 iterateQuiet n f x = let
   output = iterateQuiet (n - 1) f $! (f x)
-  shouldTrace = n `mod` 1000000 == 0
+  shouldTrace = False -- n `mod` 1000000 == 0
   in if shouldTrace then (trace ("iterateQuiet: " ++ show (n, Map.size $ memoryAcc x)) output) else output
 
 stateAfterNWords :: Int -> String -> GameState
