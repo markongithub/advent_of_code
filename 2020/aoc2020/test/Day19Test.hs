@@ -4,7 +4,14 @@ import Test.Tasty.HUnit (assertEqual, testCase)
 import Day19
 
 day19TestRules = ["0: 4 1 5", "1: 2 3 | 3 2", "2: 4 4 | 5 5", "3: 4 5 | 5 4","4: \"a\"","5: \"b\""]
-day19TestRulesExpected = Concat [StringMatch "a",Disjunction (Concat [Disjunction (StringMatch "aa") (StringMatch "bb"),Disjunction (StringMatch "ab") (StringMatch "ba")]) (Concat [Disjunction (StringMatch "ab") (StringMatch "ba"),Disjunction (StringMatch "aa") (StringMatch "bb")]),StringMatch "b"]
+day19TestRulesExpected = Concat [
+  StringMatch "a",
+  Disjunction
+    (Concat [Disjunction (StringMatch "aa") (StringMatch "bb"),
+             Disjunction (StringMatch "ab") (StringMatch "ba")])
+    (Concat [Disjunction (StringMatch "ab") (StringMatch "ba"),
+             Disjunction (StringMatch "aa") (StringMatch "bb")]),
+  StringMatch "b"]
 day19TestRulesActual = flattenRuleByNumber (parseRules day19TestRules) 0
 
 day19GoodTestInputs = ["aaaabb", "aaabab", "abbabb", "abbbab", "aabaab", "aabbbb", "abaaab", "ababbb"]
@@ -38,11 +45,21 @@ day19PureTests = [ makeTest (5, TempConcat [72, 58]) (parseRule "5: 72 58")
                      Concat [
                        StringMatch "mark",
                        Disjunction (StringMatch "sucks") (StringMatch "rules"),
-                       StringMatch "too"])
+                       Disjunction (StringMatch "too") (StringMatch "also")])
                      "markrulestoo")
                  , makeTest (take 8 (repeat True)) (map (applyRule day19TestRulesActual) day19GoodTestInputs)
+                 , makeTest 2 (solvePart1Func day19TestRulesActual
+                                ["ababbb", "bababa", "abbbab", "aaabbb", "aaaabbb"])
+                 , makeTest [True, False, True, False, False]
+                     (map (applyRule day19TestRulesActual)
+                        ["ababbb", "bababa", "abbbab", "aaabbb", "aaaabbb"])
                  ]
 
 
 
-main = defaultMain $ testGroup [] day19PureTests
+main = do
+  day19Solution1 <- solvePart1
+  let day19Solution1Test = testCase [] (assertEqual [] 142
+                                        day19Solution1)
+  defaultMain $ testGroup []
+    (day19PureTests ++ [day19Solution1Test]) --, day19Solution2Test])

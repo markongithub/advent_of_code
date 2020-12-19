@@ -73,8 +73,7 @@ applyRule0 (StringMatch s1) s2 = let
 applyRule0 (Disjunction a b) s = case (applyRule0 a s) of
   Just remainder -> Just remainder
   Nothing -> applyRule0 b s
-applyRule0 (Concat []) [] = Just []
-applyRule0 (Concat []) s = Nothing
+applyRule0 (Concat []) s = Just s
 applyRule0 (Concat (r:rs)) s = case (applyRule0 r s) of
   Nothing -> Nothing
   Just remainder -> applyRule0 (Concat rs) remainder
@@ -84,3 +83,18 @@ applyRule r s = case (applyRule0 r s) of
   Just [] -> True
   _       -> False
 
+parseInput :: [String] -> (Rule, [String])
+parseInput strings = let
+  ruleStrings = takeWhile (not . null) strings
+  testStrings = drop (length ruleStrings + 1) strings
+  rule = flattenRuleByNumber (parseRules ruleStrings) 0
+  in (rule, testStrings)
+
+solvePart1Func :: Rule -> [String] -> Int
+solvePart1Func rule ls = length $ filter (applyRule rule) ls
+
+solvePart1 :: IO Int
+solvePart1 = do
+  text <- readFile "data/input19.txt"
+  let (rule, input) = parseInput $ lines text
+  return $ solvePart1Func rule input
