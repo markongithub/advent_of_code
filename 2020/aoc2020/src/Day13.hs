@@ -1,5 +1,6 @@
 module Day13 where
 
+import Common
 import Data.List (minimumBy, sortBy)
 
 waitForBus :: Int -> Int -> Int
@@ -14,20 +15,6 @@ earliestBusTimesWait timestamp buses = let
   bestID :: Int
   (bestWait, bestID) = minimumBy compareFst waitsWithIDs
   in bestWait * bestID
-
--- plagiarizing from my own 2019d03 solution
-splitOnCommas0 :: String -> [String] -> [String]
-splitOnCommas0 str accu = case str of
-  [] -> reverse accu
-  (',':xs) -> splitOnCommas0 xs accu
-  _ -> let
-    nextSegment = takeWhile (/= ',') str
-    remainder = dropWhile (/= ',') str
-    newAccu = nextSegment:accu
-    in splitOnCommas0 remainder newAccu
-
-splitOnCommas :: String -> [String]
-splitOnCommas str = splitOnCommas0 str []
 
 parseBuses0 :: [String] -> Int -> [(Int, Int)] -> [(Int, Int)]
 parseBuses0 [] _ accu = accu
