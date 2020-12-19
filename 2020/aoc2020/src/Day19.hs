@@ -66,3 +66,21 @@ flattenConcat (Concat ls) = let
     (StringMatch s1:StringMatch s2:ys) -> flattenConcat $ Concat (StringMatch (s1 ++ s2):ys)
     ls -> Concat ls
 
+applyRule0 :: Rule -> String -> Maybe String
+applyRule0 (StringMatch s1) s2 = let
+  substring = take (length s1) s2
+  in if s1 == substring then Just (drop (length s1) s2) else Nothing
+applyRule0 (Disjunction a b) s = case (applyRule0 a s) of
+  Just remainder -> Just remainder
+  Nothing -> applyRule0 b s
+applyRule0 (Concat []) [] = Just []
+applyRule0 (Concat []) s = Nothing
+applyRule0 (Concat (r:rs)) s = case (applyRule0 r s) of
+  Nothing -> Nothing
+  Just remainder -> applyRule0 (Concat rs) remainder
+
+applyRule :: Rule -> String -> Bool
+applyRule r s = case (applyRule0 r s) of
+  Just [] -> True
+  _       -> False
+
