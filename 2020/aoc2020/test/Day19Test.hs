@@ -12,7 +12,7 @@ day19TestRulesExpected = Concat [
     (Concat [Disjunction (StringMatch "ab") (StringMatch "ba"),
              Disjunction (StringMatch "aa") (StringMatch "bb")]),
   StringMatch "b"]
-day19TestRulesActual = flattenRuleByNumber (parseRules day19TestRules) 0
+day19TestRulesActual = flattenRuleByNumber (parseRules day19TestRules) False 0
 
 day19GoodTestInputs = ["aaaabb", "aaabab", "abbabb", "abbbab", "aabaab", "aabbbb", "abaaab", "ababbb"]
 
@@ -56,10 +56,11 @@ day19PureTests = [ makeTest (5, TempConcat [72, 58]) (parseRule "5: 72 58")
                  ]
 
 
-
 main = do
-  day19Solution1 <- solvePart1
+  day19Solution1 <- solvePart1 "data/input19.txt"
   let day19Solution1Test = testCase [] (assertEqual [] 142
                                         day19Solution1)
+  part2Example1 <- solvePart1 "data/input19a.txt"
+  let part2Test1 = makeTest 3 part2Example1
   defaultMain $ testGroup []
-    (day19PureTests ++ [day19Solution1Test]) --, day19Solution2Test])
+    (day19PureTests ++ [day19Solution1Test, part2Test1]) --, day19Solution2Test])
