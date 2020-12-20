@@ -58,8 +58,6 @@ flattenTempRule m part2 (TempDisjunction a b) = Disjunction (flattenTempRule m p
 flattenTempRule m part2 (TempConcat ls) = flattenConcat $ Concat (map (flattenRuleByNumber m part2) ls)
 
 flattenConcat :: Rule -> Rule
-flattenConcat (StringMatch s) = StringMatch s
-flattenConcat (Disjunction a b) = Disjunction a b
 flattenConcat (Concat []) = StringMatch ""
 flattenConcat (Concat ls) = let
   newList = map flattenConcat ls
@@ -67,6 +65,7 @@ flattenConcat (Concat ls) = let
     [x] -> x
     (StringMatch s1:StringMatch s2:ys) -> flattenConcat $ Concat (StringMatch (s1 ++ s2):ys)
     ls -> Concat ls
+flattenConcat r = r
 
 applyRule0 :: Rule -> String -> Maybe String
 applyRule0 (StringMatch s1) s2 = let
@@ -76,6 +75,7 @@ applyRule0 (Disjunction a b) s = case (applyRule0 a s) of
   Just remainder -> Just remainder
   Nothing -> applyRule0 b s
 applyRule0 (InfiniteInfix a b) s = applyInfiniteInfix a b s
+applyRule0 (ZeroOrMore a) s = applyZeroOrMore a s
 applyRule0 (Concat []) s = Just s
 applyRule0 (Concat (r:rs)) s = case (applyRule0 r s) of
   Nothing -> Nothing
@@ -113,3 +113,31 @@ solvePart1 filename = do
   text <- readFile filename
   let (rule, input) = parseInput False $ lines text
   return $ solvePart1Func rule input
+
+parseInput2 :: [String] -> (Rule, Rule, [String])
+parseInput2 strings = let
+  ruleStrings = takeWhile (not . null) strings
+  testStrings = drop (length ruleStrings + 1) strings
+  rule8 = flattenRuleByNumber (parseRules ruleStrings) True 8
+  rule11 = flattenRuleByNumber (parseRules ruleStrings) True 11
+  in (rule8, rule11, testStrings)
+
+applyPart2 :: Rule -> Rule -> String -> Bool
+applyPart2 rule8 rule11 s = let
+  splits = [0..(length s)]
+  applySplit n = let
+    firstStr = take n s
+    secondStr = drop n s
+    in applyRule rule8 firstStr && applyRule rule11 secondStr
+  in any applySplit splits
+  
+solvePart2Func :: Rule -> Rule -> [String] -> Int
+solvePart2Func rule8 rule11 input = let
+  successes = filter (applyPart2 rule8 rule11) input
+  in length successes
+  
+solvePart2 :: String -> IO Int
+solvePart2 filename = do
+  text <- readFile filename
+  let (rule8, rule11, input) = parseInput2 $ lines text
+  return $ solvePart2Func rule8 rule11 input
