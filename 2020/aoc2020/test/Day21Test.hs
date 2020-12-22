@@ -17,11 +17,17 @@ day21PureTests = [ makeTest (Set.singleton $ Set.fromList ["sqjhc", "fvjkl"]) (d
                  , makeTest (Possibilities (Set.singleton "sqjhc")) ((solveAllergen day21ReducedMap "dairy" "mxmxvkd")!"fish")
                  , makeTest (Possibilities (Set.singleton "sqjhc")) ((solveAllergen day21ReducedMap "dairy" "mxmxvkd")!"fish")
                  , makeTest 5 (solvePart1Func day21TestInput)
+                 , makeTest "mxmxvkd,sqjhc,fvjkl" (solvePart2Func day21TestInput)
                  ]
 
 main = do
   day21Solution1 <- solvePart1
   let day21Solution1Test = testCase [] (assertEqual [] 2436
                                         day21Solution1)
+  day21Solution2 <- solvePart2
+  let day21Solution2Test =
+        testCase [] (
+          assertEqual [] "dhfng,pgblcd,xhkdc,ghlzj,dstct,nqbnmzx,ntggc,znrzgs"
+            day21Solution2)
   defaultMain $ testGroup [] (day21PureTests ++ [
-    day21Solution1Test]) -- , part2Test1, part2Test2, day21Solution2Test])
+    day21Solution1Test, day21Solution2Test])

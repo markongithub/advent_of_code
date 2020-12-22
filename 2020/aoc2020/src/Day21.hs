@@ -1,6 +1,7 @@
 module Day21 where
 
 import Common
+import Data.List (intercalate)
 import Data.Map (Map, (!))
 import qualified Data.Map as Map
 import Data.Maybe (catMaybes)
@@ -124,3 +125,14 @@ solvePart1 :: IO Int
 solvePart1 = let
   text = readFile "data/input21.txt"
   in fmap (solvePart1Func . lines) text
+
+solvePart2Func :: [String] -> String
+solvePart2Func input = let
+  solution = solve $ reduceMap $ mapFromInput input
+  allergens = map snd solution
+  in intercalate "," allergens
+
+solvePart2 :: IO String
+solvePart2 = let
+  text = readFile "data/input21.txt"
+  in fmap (solvePart2Func . lines) text
