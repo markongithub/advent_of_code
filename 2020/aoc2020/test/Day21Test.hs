@@ -15,7 +15,6 @@ day21PureTests = [ makeTest (Set.singleton $ Set.fromList ["sqjhc", "fvjkl"]) (d
                  , makeTest False (isSolved day21ReducedMap)
                  , makeTest ("dairy", "mxmxvkd") (findSingleIngredient day21ReducedMap)
                  , makeTest (Possibilities (Set.singleton "sqjhc")) ((solveAllergen day21ReducedMap "dairy" "mxmxvkd")!"fish")
-                 , makeTest (Possibilities (Set.singleton "sqjhc")) ((solveAllergen day21ReducedMap "dairy" "mxmxvkd")!"fish")
                  , makeTest 5 (solvePart1Func day21TestInput)
                  , makeTest "mxmxvkd,sqjhc,fvjkl" (solvePart2Func day21TestInput)
                  ]

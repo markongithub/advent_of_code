@@ -23,7 +23,7 @@ parseLabel s = let
   allergensStr = init $ drop (length ingredientsStr + 11) s
   allergens = splitOnSeparator ',' $ filter (/= ' ') allergensStr
   in (ingredients, allergens)
- 
+
 labelToCandidateSets :: Label -> [(Allergen, Set Ingredient)]
 labelToCandidateSets (ingredients, allergens) = let
   makePair a = (a, Set.fromList ingredients)
