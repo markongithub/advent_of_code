@@ -1,9 +1,5 @@
 module Day22 where
 
-import Common
-import Data.List (intercalate)
-import Data.Map (Map, (!))
-import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
 
@@ -76,13 +72,45 @@ solvePart1 = let
   text = readFile "data/input22.txt"
   in fmap (solvePart1Func . parseInput . lines) text
 
---solvePart2Func :: [String] -> String
---solvePart2Func input = let
---  solution = solve $ reduceMap $ mapFromInput input
---  allergens = map snd solution
---  in intercalate "," allergens
---
---solvePart2 :: IO String
---solvePart2 = let
---  text = readFile "data/input22.txt"
---  in fmap (solvePart2Func . lines) text
+size :: Deck -> Int
+-- this is stupidly inefficient, maybe I should flip it here
+size (Queue front back) = length front + length back
+
+type GameHistory = Set ([Int], [Int])
+
+firstN :: Deck -> Int -> Deck
+firstN q n = Queue (take n $ toList q) []
+
+-- don't call this if either deck is empty
+advanceGame2 :: Int -> (Deck, Deck) -> (Deck, Deck)
+advanceGame2 level (d1, d2) = let
+  (c1, r1) = dequeue d1
+  (c2, r2) = dequeue d2
+  canRecurse = size r1 >= c1 && size r2 >= c2
+  playRecursive = playGame2 Set.empty (level + 1) (firstN r1 c1, firstN r2 c2)
+  p1WinsRecursion = fst $ playRecursive
+  p1Wins = if canRecurse then p1WinsRecursion else (c1 > c2)
+  (winnerCard, loserCard) = if p1Wins then (c1, c2) else (c2, c1)
+  expandWinnerDeck d = enqueue loserCard $ enqueue winnerCard d
+  newP1Deck = if p1Wins then (expandWinnerDeck r1) else r1
+  newP2Deck = if p1Wins then r2 else (expandWinnerDeck r2)
+  in (newP1Deck, newP2Deck)
+
+playGame2 :: GameHistory -> Int -> (Deck, Deck) -> (Bool, Deck)
+playGame2 history level (d1, d2)
+  | Set.member setKey history = (True, d1)
+  | empty d1 = (False, d2)
+  | empty d2 = (True, d1)
+  | otherwise = playGame2 newHistory level $ advanceGame2 level (d1, d2)
+  where setKey = (toList d1, toList d2)
+        newHistory = Set.insert setKey history
+
+solvePart2Func :: (Deck, Deck) -> Int
+solvePart2Func (d1, d2) = let
+  winningDeck = snd $ playGame2 Set.empty 0 (d1, d2)
+  in tallyScore winningDeck
+
+solvePart2 :: IO Int
+solvePart2 = let
+  text = readFile "data/input22.txt"
+  in fmap (solvePart2Func . parseInput . lines) text
