@@ -23,7 +23,7 @@ day23PureTests = [
   , makeTest 10 (part2Product $ fromList [5,4,6,7,3,8,9,1,2])
   , makeTest (5,4) (twoCupsAfter1 (playTurn longTestState))
   , makeTest (3,2) (twoCupsAfter1 (playNTurns longTestState 2))
---  , makeTest 5556969 solvePart2
+  , makeTest 5556969 solvePart2
   ]
 
 main = do

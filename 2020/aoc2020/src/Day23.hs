@@ -88,13 +88,14 @@ deconstructLL [] = error "deconstructLL on empty LL"
 deconstructLL ([]:xs) = deconstructLL xs
 deconstructLL ((x:xs):ys) = (x, (xs:ys))
 
+takeLL0 :: Int -> SmartLL -> [Int] -> ([Int], SmartLL)
+takeLL0 0 xs accu = (reverse accu, xs)
+takeLL0 n [] _ = error "ran out of list"
+takeLL0 n ([]:xs) accu = takeLL0 n xs accu
+takeLL0 n ((x:xs):ys) accu = takeLL0 (pred n) (xs:ys) (x:accu)
+
 takeLL :: Int -> SmartLL -> ([Int], SmartLL)
-takeLL 0 xs = ([], xs)
-takeLL n [] = error "ran out of list"
-takeLL n ([]:xs) = takeLL n xs
-takeLL n ((x:xs):ys) = let
-  (a, b) = takeLL (pred n) (xs:ys)
-  in (x:a, b)
+takeLL n xs = takeLL0 n xs []
 
 safeTakeLL :: Int -> SmartLL -> ([Int], SmartLL)
 safeTakeLL 0 xs = ([], xs)
