@@ -9,12 +9,20 @@ import Day23
 
 makeTest expected actual = testCase [] (assertEqual [] expected actual)
 
-initialTestState = GameState [3,8,9,1,2,5,4,6,7]
-day23PureTests = [ makeTest (GameState [2,8,9,1,5,4,6,7,3]) (playTurn initialTestState)
-                 , makeTest "54673289" (labelsAfter1 $ GameState [2,8,9,1,5,4,6,7,3])
-                 , makeTest (GameState [8,3,7,4,1,9,2,6,5]) (playNTurns initialTestState 10)
-                 , makeTest "5556969" solvePart1
-                 ]
+initialTestState = fromList [3,8,9,1,2,5,4,6,7]
+day23PureTests = [
+    makeTest (fromList [2,8,9,1,5,4,6,7,3]) (playTurn initialTestState)
+  , makeTest (GameState [3,8,9,1,2,5,4,6,7] 1 9) initialTestState
+  , makeTest [2,1,9,8,7,6,5,4] (destinationCandidates initialTestState)
+  , makeTest "54673289" (labelsAfter1 $ fromList [2,8,9,1,5,4,6,7,3])
+  , makeTest (fromList [8,3,7,4,1,9,2,6,5]) (playNTurns initialTestState 10)
+  , makeTest "74698532" solvePart1
+  , makeTest 1000000 (length $ initialLongList part1Input)
+  , makeTest (2,5) (twoCupsAfter1 initialTestState)
+  , makeTest 10 (part2Product initialTestState)
+  , makeTest 10 (part2Product $ fromList [5,4,6,7,3,8,9,1,2])
+  , makeTest 5556969 solvePart2
+  ]
 
 main = do
 --  day23Solution1 <- solvePart1
