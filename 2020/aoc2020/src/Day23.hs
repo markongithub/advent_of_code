@@ -1,48 +1,46 @@
 module Day23 where
 
-import Data.List (sort)
-import Data.Map (Map, (!))
-import qualified Data.Map as Map
-import Data.Set (Set)
-import qualified Data.Set as Set
+import Data.Foldable (toList)
+import Data.Maybe (isNothing)
+import Data.Sequence (Seq, Seq((:<|)), Seq((:|>)), (><))
+import qualified Data.Sequence as Seq
 import Debug.Trace (trace)
 
-data GameState = GameState ![Int] !Int !Int deriving (Eq, Show)
+data GameState = GameState (Seq Int) Int Int deriving (Eq, Show)
 
 fromList :: [Int] -> GameState
-fromList ls = GameState ls (minimum ls) (maximum ls)
+fromList ls = GameState (Seq.fromList ls) (minimum ls) (maximum ls)
 
-destinationCandidates :: GameState -> [Int]
-destinationCandidates (GameState (current:rest) minLabel maxLabel) = let
-  downToMin = takeWhile (>= minLabel) $ iterate pred (current - 1)
-  downFromMax = takeWhile (> current) $ iterate pred maxLabel
-  in downToMin ++ downFromMax
+findDestination :: Int -> Int -> Int -> Seq Int -> Int
+findDestination current minLabel maxLabel forbidden
+  | current < minLabel = findDestination maxLabel minLabel maxLabel forbidden
+  | isNothing (Seq.elemIndexL current forbidden) = current
+  | otherwise = findDestination (pred current) minLabel maxLabel forbidden
 
 playTurn :: GameState -> GameState
 playTurn g = let
-  GameState (current:rest) minLabel maxLabel = g
-  pickedUp = take 3 rest
-  orderedCandidates = destinationCandidates g
-  destination = head  $ dropWhile (\c -> any (==c) pickedUp) orderedCandidates
-  listBefore = takeWhile (/= destination) $ drop 3 rest
-  listAfter = drop (length listBefore + 4) rest
-  finalList = listBefore ++ (destination:pickedUp) ++ listAfter ++ [current]
-  in GameState finalList minLabel maxLabel
+  GameState (current :<| rest) minLabel maxLabel = g
+  (pickedUp, notPickedUp) = Seq.splitAt 3 rest
+  destination = findDestination (pred current) minLabel maxLabel pickedUp
+  (cupsBeforeDest, cupsFromDest) = Seq.spanl (/= destination) notPickedUp
+  cupsAfterDest = Seq.drop 1 cupsFromDest
+  finalCups = (cupsBeforeDest >< (destination :<| pickedUp)) >< (cupsAfterDest :|> current)
+  in GameState finalCups minLabel maxLabel
 
 playNTurns :: GameState -> Int -> GameState
 playNTurns state n
   | n == 0 = state
-  | (n `mod` 10 == 0) && trace ("Last cup is " ++ (show $ last rest) ++ " with " ++ show n ++ " turns left.") False = undefined
+  | (n `mod` 100 == 0) && trace ("First cup is " ++ (show $ current) ++ " with " ++ show n ++ " turns left.") False = undefined
   | otherwise = seq nextState $ playNTurns nextState (n-1)
   where nextState = playTurn $! state
-        GameState (current:rest) minLabel maxLabel = state
+        GameState (current :<| rest) minLabel maxLabel = state
 
 labelsAfter1 :: GameState -> String
 labelsAfter1 (GameState cups _ _) = let
-  cupsBefore1 = takeWhile (/= 1) cups
-  cupsAfter1 = drop (length cupsBefore1 + 1) cups
-  finalList = cupsAfter1 ++ cupsBefore1
-  in concat (map show finalList)
+  (cupsBefore1, cupsFrom1) = Seq.spanl (/= 1) cups
+  cupsAfter1 = Seq.drop 1 cupsFrom1
+  finalSeq = cupsAfter1 >< cupsBefore1
+  in concat (map show $ toList finalSeq)
 
 solvePart1Func :: GameState -> String
 solvePart1Func g = labelsAfter1 $ playNTurns g 100
@@ -60,10 +58,13 @@ initialLongList cups = let
 
 twoCupsAfter1 :: GameState -> (Int, Int)
 twoCupsAfter1 (GameState cups _ _) = let
-  cupsAfter1 = tail $ dropWhile (/= 1) cups
-  twoCups = if (length cupsAfter1 >= 2) then (take 2 cupsAfter1) 
-              else (cupsAfter1 ++ (take (2 - (length cupsAfter1)) cups))
-  in (twoCups!!0, twoCups!!1)
+  (cupsBefore1, cupsFrom1) = Seq.spanl (/= 1) cups
+  cupsAfter1 = Seq.drop 1 cupsFrom1
+  numCupsAfter1 = Seq.length cupsAfter1
+  twoCups = if (numCupsAfter1 >= 2) then (Seq.take 2 cupsAfter1) 
+              else (cupsAfter1 >< (Seq.take (2 - numCupsAfter1) cupsBefore1))
+  finalList = toList twoCups
+  in (finalList!!0, finalList!!1)
 
 part2Product :: GameState -> Int
 part2Product g = let
@@ -75,3 +76,30 @@ solvePart2 = let
   initialState = fromList (initialLongList part1Input)
   finalState = playNTurns initialState 10000000
   in part2Product finalState
+
+type SmartLL = [[Int]]
+
+headLL :: SmartLL -> Int
+headLL [] = error "headLL on empty LL"
+headLL ([]:xs) = headLL xs
+headLL ((x:xs):ys) = x
+
+takeLL :: Int -> SmartLL -> ([Int], SmartLL)
+takeLL 0 xs = ([], xs)
+takeLL n [] = error "ran out of list"
+takeLL n ([]:xs) = takeLL n xs
+takeLL n ((x:xs):ys) = let
+  (a, b) = takeLL (pred n) (xs:ys)
+  in (x:a, b)
+
+splitLL :: (Int -> Bool) -> SmartLL -> ([Int], SmartLL)
+splitLL p [] = error "can't split an empty list"
+splitLL p ([]:xs) = splitLL p xs
+splitLL p ((x:xs):ys) = let
+  allTheRest = (xs:ys)
+  done = ([], allTheRest)
+  (continueA, continueB) = splitLL p allTheRest
+  continue = (x:continueA, continueB)
+  in if (p x) then done else continue
+
+
