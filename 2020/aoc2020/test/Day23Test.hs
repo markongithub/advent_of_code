@@ -10,6 +10,8 @@ import Day23
 makeTest expected actual = testCase [] (assertEqual [] expected actual)
 
 initialTestState = fromList [3,8,9,1,2,5,4,6,7]
+longTestState = fromList $ initialLongList [3,8,9,1,2,5,4,6,7]
+
 day23PureTests = [
     makeTest (fromList [2,8,9,1,5,4,6,7,3]) (playTurn initialTestState)
   , makeTest (GameState [3,8,9,1,2,5,4,6,7] 1 9) initialTestState
@@ -21,7 +23,10 @@ day23PureTests = [
   , makeTest (2,5) (twoCupsAfter1 initialTestState)
   , makeTest 10 (part2Product initialTestState)
   , makeTest 10 (part2Product $ fromList [5,4,6,7,3,8,9,1,2])
-  , makeTest 5556969 solvePart2
+  , makeTest (5,4) (twoCupsAfter1 (playTurn longTestState))
+  , makeTest (3,2) (twoCupsAfter1 (playNTurns longTestState 2))
+  , makeTest (3,2) (twoCupsAfter1 (playNTurns longTestState 100))
+  -- , makeTest 5556969 solvePart2
   ]
 
 main = do

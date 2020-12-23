@@ -7,7 +7,7 @@ import Data.Set (Set)
 import qualified Data.Set as Set
 import Debug.Trace (trace)
 
-data GameState = GameState [Int] Int Int deriving (Eq, Show)
+data GameState = GameState ![Int] !Int !Int deriving (Eq, Show)
 
 fromList :: [Int] -> GameState
 fromList ls = GameState ls (minimum ls) (maximum ls)
@@ -32,9 +32,10 @@ playTurn g = let
 playNTurns :: GameState -> Int -> GameState
 playNTurns state n
   | n == 0 = state
-  | (n `mod` 100000 == 0) && trace ("Turns left: " ++ show n) False = undefined
-  | otherwise = playNTurns nextState (n-1)
-  where nextState = playTurn state
+  | (n `mod` 10 == 0) && trace ("Last cup is " ++ (show $ last rest) ++ " with " ++ show n ++ " turns left.") False = undefined
+  | otherwise = seq nextState $ playNTurns nextState (n-1)
+  where nextState = playTurn $! state
+        GameState (current:rest) minLabel maxLabel = state
 
 labelsAfter1 :: GameState -> String
 labelsAfter1 (GameState cups _ _) = let
