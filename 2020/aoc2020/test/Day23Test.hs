@@ -6,14 +6,16 @@ import Day23
 
 makeTest expected actual = testCase [] (assertEqual [] expected actual)
 
+sameCups expected (GameState cups _ _)  = testCase [] (assertEqual [] expected (flattenLL cups))
+
 initialTestState = fromList [3,8,9,1,2,5,4,6,7]
 longTestState = fromList $ initialLongList [3,8,9,1,2,5,4,6,7]
 
 day23PureTests = [
-    makeTest (fromList [2,8,9,1,5,4,6,7,3]) (playTurn initialTestState)
-  , makeTest (GameState (Seq.fromList [3,8,9,1,2,5,4,6,7]) 1 9) initialTestState
+    sameCups [2,8,9,1,5,4,6,7,3] (playTurn initialTestState)
+  , makeTest (GameState [[3,8,9,1,2,5,4,6,7]] 1 9) initialTestState
   , makeTest "54673289" (labelsAfter1 $ fromList [2,8,9,1,5,4,6,7,3])
-  , makeTest (fromList [8,3,7,4,1,9,2,6,5]) (playNTurns initialTestState 10)
+  , sameCups [8,3,7,4,1,9,2,6,5] (playNTurns initialTestState 10)
   , makeTest "74698532" solvePart1
   , makeTest 1000000 (length $ initialLongList part1Input)
   , makeTest (2,5) (twoCupsAfter1 initialTestState)
