@@ -1,3 +1,5 @@
+module Day23 where
+
 import Data.Map.Strict (Map, (!))
 import qualified Data.Map.Strict as Map
 import Debug.Trace (trace)
@@ -39,7 +41,7 @@ playTurn g = let
   newCurrent = oldPickedUpNext
   in GameState newCurrent newMap minLabel maxLabel
 
-strictMod = 20000
+strictMod = 100000
 playNTurns :: GameState -> Int -> GameState
 playNTurns state n
   | n == 0 = state
