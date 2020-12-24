@@ -6,7 +6,7 @@ import Data.Sequence (Seq, Seq((:<|)), Seq((:|>)), (><))
 import qualified Data.Sequence as Seq
 import Debug.Trace (trace)
 
-data GameState = GameState SmartLL Int Int deriving (Eq, Show)
+data GameState = GameState !SmartLL Int Int deriving (Eq, Show)
 
 fromList :: [Int] -> GameState
 fromList ls = GameState [ls] (minimum ls) (maximum ls)
@@ -24,15 +24,24 @@ playTurn g = let
   (pickedUp, notPickedUp) = takeLL 3 rest
   destination = findDestination (pred current) minLabel maxLabel pickedUp
   (cupsBeforeDest, cupsAfterDest) = splitLL (== destination) notPickedUp
-  finalCups = [cupsBeforeDest, (destination:pickedUp)] ++ cupsAfterDest ++ [[current]]
+  -- finalCups = (cupsBeforeDest:((destination:pickedUp):cupsAfterDest)) ++ [[current]]
+  finalCups = (cupsBeforeDest:((current:(destination:pickedUp)):cupsAfterDest))
   in GameState finalCups minLabel maxLabel
 
+playTurnAndFlatten :: GameState -> GameState
+playTurnAndFlatten (GameState cups minLabel maxLabel) = let
+  flattened = flattenLL cups
+  newCups = trace ("maximum cup label is " ++ show (maximum flattened)) [flattenLL cups]
+  in seq newCups $ playTurn (GameState newCups minLabel maxLabel)
+
+strictMod = 10
 playNTurns :: GameState -> Int -> GameState
 playNTurns state n
   | n == 0 = state
-  | (n `mod` 100 == 0) && trace ("First cup is " ++ (show $ headLL cups) ++ " with " ++ show n ++ " turns left.") False = undefined
+  | (n `mod` strictMod == 0) && trace ("LL is of length " ++ (show $ length cups) ++ " with " ++ show n ++ " turns left.") False = undefined
   | otherwise = seq nextState $ playNTurns nextState (n-1)
-  where nextState = playTurn $! state
+  where nextFunc = playTurn -- if (n `mod` strictMod == 0) then playTurnAndFlatten else playTurn
+        nextState = nextFunc $! state
         GameState cups minLabel maxLabel = state
 
 labelsAfter1 :: GameState -> String
@@ -76,6 +85,9 @@ solvePart2 = let
   finalState = playNTurns initialState 10000000
   in part2Product finalState
 
+current :: GameState -> Int
+current (GameState ll _ _) = headLL ll
+
 type SmartLL = [[Int]]
 
 headLL :: SmartLL -> Int
@@ -83,11 +95,13 @@ headLL [] = error "headLL on empty LL"
 headLL ([]:xs) = headLL xs
 headLL ((x:xs):ys) = x
 
+-- this should be O(1)
 deconstructLL :: SmartLL -> (Int, SmartLL)
 deconstructLL [] = error "deconstructLL on empty LL"
 deconstructLL ([]:xs) = deconstructLL xs
 deconstructLL ((x:xs):ys) = (x, (xs:ys))
 
+-- this should be O(n) in the n you're taking
 takeLL0 :: Int -> SmartLL -> [Int] -> ([Int], SmartLL)
 takeLL0 0 xs accu = (reverse accu, xs)
 takeLL0 n [] _ = error "ran out of list"
