@@ -17,8 +17,8 @@ source-repository head
 library
   exposed-modules:
       Common
-      Day21
-      Day19
+      Day22
+--      Day19
 --      Day15
 --      Day14
 --      Day13
@@ -33,9 +33,9 @@ library
     , containers
   default-language: Haskell2010
 
-test-suite day21test
+test-suite day22test
   type: exitcode-stdio-1.0
-  main-is: Day21Test.hs
+  main-is: Day22Test.hs
   other-modules:
       Paths_aoc2020
   hs-source-dirs:
@@ -49,20 +49,36 @@ test-suite day21test
     , tasty-hunit
   default-language: Haskell2010
 
-test-suite day19test
-  type: exitcode-stdio-1.0
-  main-is: Day19Test.hs
-  other-modules:
-      Paths_aoc2020
-  hs-source-dirs:
-      test
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N -O2
-  build-depends:
-      aoc2020
-    , base >=4.7 && <5
-    , tasty
-    , tasty-hunit
-  default-language: Haskell2010
+--test-suite day21test
+--  type: exitcode-stdio-1.0
+--  main-is: Day21Test.hs
+--  other-modules:
+--      Paths_aoc2020
+--  hs-source-dirs:
+--      test
+--  ghc-options: -threaded -rtsopts -with-rtsopts=-N -O2
+--  build-depends:
+--      aoc2020
+--    , base >=4.7 && <5
+--    , containers
+--    , tasty
+--    , tasty-hunit
+--  default-language: Haskell2010
+--
+--test-suite day19test
+--  type: exitcode-stdio-1.0
+--  main-is: Day19Test.hs
+--  other-modules:
+--      Paths_aoc2020
+--  hs-source-dirs:
+--      test
+--  ghc-options: -threaded -rtsopts -with-rtsopts=-N -O2
+--  build-depends:
+--      aoc2020
+--    , base >=4.7 && <5
+--    , tasty
+--    , tasty-hunit
+--  default-language: Haskell2010
 
 --test-suite day15test
 --  type: exitcode-stdio-1.0
