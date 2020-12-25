@@ -22,6 +22,9 @@ day25Input1 = 3248366
 day25Input2 = 4738476
 
 solvePart1 = let
-  loopSize = findLoopSize 7 20201227 day25Input1
-  encryptionKey = transform day25Input2 20201227 loopSize
-  in encryptionKey
+  loopSize1 = findLoopSize 7 20201227 day25Input1
+  loopSize2 = findLoopSize 7 20201227 day25Input2
+  encryptionKey1 = transform day25Input2 20201227 loopSize1
+  encryptionKey2 = transform day25Input1 20201227 loopSize2
+  in if encryptionKey1 == encryptionKey2 then encryptionKey1
+    else error "keys do not match"
