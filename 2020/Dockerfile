@@ -1,4 +1,4 @@
-FROM haskell:8
+FROM haskell:8.8
 RUN stack setup
 COPY aoc2020/aoc2020.cabal /code/aoc2020.cabal
 COPY aoc2020/stack.yaml /code/stack.yaml
