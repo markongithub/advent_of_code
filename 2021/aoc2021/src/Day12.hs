@@ -75,3 +75,57 @@ testData1 = [
   ]
 
 graph1 = graphFromEdges $ map parseEdge testData1
+
+testData3 = [
+    "fs-end"
+  , "he-DX"
+  , "fs-he"
+  , "start-DX"
+  , "pj-DX"
+  , "end-zg"
+  , "zg-sl"
+  , "zg-pj"
+  , "pj-he"
+  , "RW-he"
+  , "fs-DX"
+  , "pj-RW"
+  , "zg-RW"
+  , "start-pj"
+  , "he-WI"
+  , "zg-he"
+  , "pj-fs"
+  , "start-RW"
+  ]
+
+graph3 = graphFromEdges $ map parseEdge testData3
+
+puzzleInput1 = [
+    "ey-dv"
+  , "AL-ms"
+  , "ey-lx"
+  , "zw-YT"
+  , "hm-zw"
+  , "start-YT"
+  , "start-ms"
+  , "dv-YT"
+  , "hm-ms"
+  , "end-ey"
+  , "AL-ey"
+  , "end-hm"
+  , "rh-hm"
+  , "dv-ms"
+  , "AL-dv"
+  , "ey-SP"
+  , "hm-lx"
+  , "dv-start"
+  , "end-lx"
+  , "zw-AL"
+  , "hm-AL"
+  , "lx-zw"
+  , "ey-zw"
+  , "zw-dv"
+  , "YT-ms"
+  ]
+puzzle1 = graphFromEdges $ map parseEdge puzzleInput1
+
+solvePart1 = countPaths puzzle1 (SmallCave "start")
