@@ -14,6 +14,7 @@ type CaveGraph = Map Node (Set Node)
 data SearchState = SearchState {
     graphF :: CaveGraph
   , currentPathF :: [Node]
+  , smallCavesSeenF :: Maybe (Set Node)
   }
 
 isSmallCave n = case n of
@@ -21,21 +22,27 @@ isSmallCave n = case n of
   _           -> False
 
 listPaths0 :: SearchState -> [[Node]]
-listPaths0 (SearchState graph currentPath)
+listPaths0 (SearchState graph currentPath cavesSeen)
   | currentNode == End = [currentPath]
   | otherwise = concat $ map listPaths0 childStates
   where
     currentNode = head currentPath
-    newGraph = if (isSmallCave currentNode) then Map.delete currentNode graph else graph
+    newGraph = if (isSmallCave currentNode) then updateGraph else graph
+    updateGraph = case cavesSeen of
+      Nothing -> Map.delete currentNode graph
+      Just s -> if (Set.member currentNode s) then Map.delete currentNode graph else graph
+    newCavesSeen = case cavesSeen of
+      Nothing -> Nothing
+      Just s -> if (isSmallCave currentNode) then Just $ Set.insert currentNode s else cavesSeen
     nextNodes = Set.toList $ Map.findWithDefault Set.empty currentNode graph
-    makeNewState newNode = SearchState newGraph (newNode:currentPath)
+    makeNewState newNode = SearchState newGraph (newNode:currentPath) newCavesSeen
     childStates :: [SearchState]
     childStates = map makeNewState nextNodes
 
 countPaths :: CaveGraph -> Node -> Int
 countPaths g n = let
   paths :: [[Node]]
-  paths = listPaths0 $ SearchState g [n]
+  paths = listPaths0 $ SearchState g [n] Nothing
   in length paths
 
 parseNode :: String -> Node
