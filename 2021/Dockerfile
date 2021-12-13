@@ -8,4 +8,4 @@ WORKDIR /code
 RUN stack setup
 RUN stack test --only-dependencies
 COPY aoc2021 /code
-RUN stack test
+RUN stack build
