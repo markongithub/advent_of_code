@@ -6,7 +6,7 @@ import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
 
-data Node = BigCave String | SmallCave String | End
+data Node = Start | BigCave String | SmallCave String | End
   deriving (Eq, Ord, Show)
 
 type CaveGraph = Map Node (Set Node)
@@ -30,26 +30,31 @@ listPaths0 (SearchState graph currentPath cavesSeen)
     newGraph = if (isSmallCave currentNode) then updateGraph else graph
     updateGraph = case cavesSeen of
       Nothing -> Map.delete currentNode graph
-      Just s -> if (Set.member currentNode s) then Map.delete currentNode graph else graph
+      Just s -> if (Set.member currentNode s) then blockAllVisitedCaves s else graph
     newCavesSeen = case cavesSeen of
       Nothing -> Nothing
-      Just s -> if (isSmallCave currentNode) then Just $ Set.insert currentNode s else cavesSeen
-    nextNodes = Set.toList $ Map.findWithDefault Set.empty currentNode graph
+      Just s -> case Set.member currentNode s of
+        True -> Nothing
+        False -> if (isSmallCave currentNode) then Just $ Set.insert currentNode s else cavesSeen
+    nextNodes = filter (/= Start) $ Set.toList $ Map.findWithDefault Set.empty currentNode graph
     makeNewState newNode = SearchState newGraph (newNode:currentPath) newCavesSeen
     childStates :: [SearchState]
     childStates = map makeNewState nextNodes
+    blockAllVisitedCaves s = foldl (flip Map.delete) graph (Set.toList s)
+
+listPaths :: CaveGraph -> Node -> Bool -> [[Node]]
+listPaths g n isPart2 = let
+  initialSet = if isPart2 then Just Set.empty else Nothing
+  in listPaths0 $ SearchState g [n] initialSet
 
 countPaths :: CaveGraph -> Node -> Bool -> Int
-countPaths g n isPart2 = let
-  initialSet = if isPart2 then Just Set.empty else Nothing
-  paths :: [[Node]]
-  paths = listPaths0 $ SearchState g [n] initialSet
-  in length paths
+countPaths g n b = length $ listPaths g n b
 
 parseNode :: String -> Node
 parseNode s
   | isUpper (head s) = BigCave s
   | otherwise = case s of
+    "start" -> Start
     "end" -> End
     _-> SmallCave s
 
@@ -136,4 +141,5 @@ puzzleInput1 = [
   ]
 puzzle1 = graphFromEdges $ map parseEdge puzzleInput1
 
-solvePart1 = countPaths puzzle1 (SmallCave "start") False
+solvePart1 = countPaths puzzle1 Start False
+solvePart2 = countPaths puzzle1 Start True
