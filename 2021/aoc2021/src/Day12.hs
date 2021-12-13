@@ -39,10 +39,11 @@ listPaths0 (SearchState graph currentPath cavesSeen)
     childStates :: [SearchState]
     childStates = map makeNewState nextNodes
 
-countPaths :: CaveGraph -> Node -> Int
-countPaths g n = let
+countPaths :: CaveGraph -> Node -> Bool -> Int
+countPaths g n isPart2 = let
+  initialSet = if isPart2 then Just Set.empty else Nothing
   paths :: [[Node]]
-  paths = listPaths0 $ SearchState g [n] Nothing
+  paths = listPaths0 $ SearchState g [n] initialSet
   in length paths
 
 parseNode :: String -> Node
@@ -135,4 +136,4 @@ puzzleInput1 = [
   ]
 puzzle1 = graphFromEdges $ map parseEdge puzzleInput1
 
-solvePart1 = countPaths puzzle1 (SmallCave "start")
+solvePart1 = countPaths puzzle1 (SmallCave "start") False

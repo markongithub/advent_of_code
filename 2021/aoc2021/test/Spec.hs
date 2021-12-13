@@ -6,8 +6,8 @@ import Day12
 makeTest expected actual = testCase [] (assertEqual [] expected actual)
 
 day12PureTests = [
-    makeTest 10 (countPaths graph1 (SmallCave "start"))
-  , makeTest 226 (countPaths graph3 (SmallCave "start"))
+    makeTest 10 (countPaths graph1 (SmallCave "start") False)
+  , makeTest 226 (countPaths graph3 (SmallCave "start") False)
   , makeTest 3779 solvePart1
   ]
 
