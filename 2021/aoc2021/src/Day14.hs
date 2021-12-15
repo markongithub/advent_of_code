@@ -174,8 +174,8 @@ applyDown rules x y steps cache
 applyAcross :: String -> RuleSet -> Int -> PairCache -> FrequencyMap -> FrequencyMap
 applyAcross [] _ _ _ _ = error "I thought this wouldn't happen in applyAcross"
 applyAcross [c] _ _ _ accu = Map.insertWith (+) c 1 accu
-applyAcross (x:(y:ys)) rules steps cache accu
-  | otherwise = applyAcross (y:ys) rules steps newCache newAccu
+applyAcross (x:(y:ys)) rules steps cache accu =
+  applyAcross (y:ys) rules steps newCache newAccu
   where
     (newCache, thisMap) = applyDown rules x y steps cache
     newAccu = Map.unionWith (+) accu thisMap
