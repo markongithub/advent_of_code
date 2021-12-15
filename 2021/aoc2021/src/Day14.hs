@@ -1,6 +1,6 @@
 module Day14 where
 
-import Data.Map (Map)
+import Data.Map (Map, (!))
 import qualified Data.Map as Map
 import Data.List (sort)
 
@@ -151,26 +151,41 @@ inputRules = parseRuleSet [
 
 solvePart1 = part1Problem inputTemplate inputRules
 
-applyDown :: RuleSet -> Char -> Char -> Int -> Map Char Int
-applyDown rules x y 0 = Map.singleton x 1
-applyDown rules x y steps = case (Map.lookup (x, y) rules) of
-  Nothing -> Map.singleton x 1
-  Just newChar -> let
-    downLeft = applyDown rules x newChar (steps - 1)
-    downRight = applyDown rules newChar y (steps - 1)
-    in Map.unionWith (+) downLeft downRight
+type FrequencyMap = Map Char Int
+type PairCache = Map (Char, Char, Int) FrequencyMap
 
-applyAcross :: String -> RuleSet -> Int -> Map Char Int -> Map Char Int
-applyAcross [] _ _ _ = error "I thought this wouldn't happen in applyAcross"
-applyAcross [c] _ _ accu = Map.insertWith (+) c 1 accu
-applyAcross (x:(y:ys)) rules steps accu = let
-  newAccu = Map.unionWith (+) accu $ applyDown rules x y steps
-  in applyAcross (y:ys) rules steps newAccu
+applyDown :: RuleSet -> Char -> Char -> Int -> PairCache
+             -> (PairCache, FrequencyMap)
+applyDown rules x y steps cache
+  | steps == 0                     = (cache, singleton)
+  | Map.member cacheKey cache = (cache, cache!cacheKey)
+  | not (Map.member (x, y) rules)  = (cacheWithSingleton, singleton)
+  | otherwise                      = (finalCache, finalMap)
+  where
+    cacheKey = (x, y, steps)
+    singleton = Map.singleton x 1
+    cacheWithSingleton = Map.insert (x, y, steps) singleton cache
+    newChar = rules!(x, y)
+    (cacheFromLeft, leftMap) = applyDown rules x newChar (steps - 1) cache
+    (cacheFromRight, rightMap) = applyDown rules newChar y (steps - 1) cacheFromLeft
+    finalMap = Map.unionWith (+) leftMap rightMap
+    finalCache = Map.insert cacheKey finalMap cacheFromRight
+
+applyAcross :: String -> RuleSet -> Int -> PairCache -> FrequencyMap -> FrequencyMap
+applyAcross [] _ _ _ _ = error "I thought this wouldn't happen in applyAcross"
+applyAcross [c] _ _ _ accu = Map.insertWith (+) c 1 accu
+applyAcross (x:(y:ys)) rules steps cache accu
+  | otherwise = applyAcross (y:ys) rules steps newCache newAccu
+  where
+    (newCache, thisMap) = applyDown rules x y steps cache
+    newAccu = Map.unionWith (+) accu thisMap
 
 applySteps :: RuleSet -> String -> Int -> Map Char Int
-applySteps rules s steps = applyAcross s rules steps Map.empty
+applySteps rules s steps = applyAcross s rules steps Map.empty Map.empty
 
 part2Problem :: String -> RuleSet -> Int
 part2Problem s rs = part1Difference $ applySteps rs s 40
+
+test2Output = part2Problem test1Template test1Rules
 
 solvePart2 = part2Problem inputTemplate inputRules
