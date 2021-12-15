@@ -13,13 +13,13 @@ parseRule s = ((s!!0, s!!1), (s!!6))
 parseRuleSet :: [String] -> RuleSet
 parseRuleSet strs = Map.fromList $ map parseRule strs
 
-part1Difference :: Ord a => Map a Int -> Int
-part1Difference m = let
+maxMinDifference :: Ord a => Map a Int -> Int
+maxMinDifference m = let
   orderedCounts = sort $ Map.elems $ m
   in (last orderedCounts) - (head orderedCounts)
 
 part1Problem :: String -> RuleSet -> Int
-part1Problem s rs = part1Difference $ applySteps rs s 10
+part1Problem s rs = maxMinDifference $ applySteps rs s 10
 
 test1Rules = parseRuleSet [
     "CH -> B"
@@ -184,7 +184,7 @@ applySteps :: RuleSet -> String -> Int -> Map Char Int
 applySteps rules s steps = applyAcross s rules steps Map.empty Map.empty
 
 part2Problem :: String -> RuleSet -> Int
-part2Problem s rs = part1Difference $ applySteps rs s 40
+part2Problem s rs = maxMinDifference $ applySteps rs s 40
 
 test2Output = part2Problem test1Template test1Rules
 
