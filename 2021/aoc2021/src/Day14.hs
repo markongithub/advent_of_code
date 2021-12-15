@@ -7,34 +7,15 @@ import Data.List (sort)
 type Rule = ((Char, Char), Char)
 type RuleSet = Map (Char, Char) Char
 
-applyRules :: RuleSet -> String -> String
-applyRules _ [] = []
-applyRules _ [x] = [x]
-applyRules rules (x:(y:ys)) = case (Map.lookup (x, y) rules) of
-  Nothing -> x:(applyRules rules (y:ys))
-  Just c  -> x:(c:(applyRules rules (y:ys)))
-
-applySteps :: RuleSet -> String -> Int -> String
-applySteps rs s steps = let
-  f = applyRules rs
-  outputs = iterate f s
-  in last $ take (steps + 1) outputs
-
 parseRule :: String -> Rule
 parseRule s = ((s!!0, s!!1), (s!!6))
 
 parseRuleSet :: [String] -> RuleSet
 parseRuleSet strs = Map.fromList $ map parseRule strs
 
-countElements :: (Ord a) => [a] -> Map a Int
-countElements xs = let
-  increment :: (Ord b) => Map b Int -> b -> Map b Int
-  increment m k = Map.insertWith (+) k 1 m
-  in foldl increment Map.empty xs
-
-part1Difference :: String -> Int
-part1Difference s = let
-  orderedCounts = sort $ Map.elems $ countElements s
+part1Difference :: Ord a => Map a Int -> Int
+part1Difference m = let
+  orderedCounts = sort $ Map.elems $ m
   in (last orderedCounts) - (head orderedCounts)
 
 part1Problem :: String -> RuleSet -> Int
@@ -169,3 +150,27 @@ inputRules = parseRuleSet [
   ]
 
 solvePart1 = part1Problem inputTemplate inputRules
+
+applyDown :: RuleSet -> Char -> Char -> Int -> Map Char Int
+applyDown rules x y 0 = Map.singleton x 1
+applyDown rules x y steps = case (Map.lookup (x, y) rules) of
+  Nothing -> Map.singleton x 1
+  Just newChar -> let
+    downLeft = applyDown rules x newChar (steps - 1)
+    downRight = applyDown rules newChar y (steps - 1)
+    in Map.unionWith (+) downLeft downRight
+
+applyAcross :: String -> RuleSet -> Int -> Map Char Int -> Map Char Int
+applyAcross [] _ _ _ = error "I thought this wouldn't happen in applyAcross"
+applyAcross [c] _ _ accu = Map.insertWith (+) c 1 accu
+applyAcross (x:(y:ys)) rules steps accu = let
+  newAccu = Map.unionWith (+) accu $ applyDown rules x y steps
+  in applyAcross (y:ys) rules steps newAccu
+
+applySteps :: RuleSet -> String -> Int -> Map Char Int
+applySteps rules s steps = applyAcross s rules steps Map.empty
+
+part2Problem :: String -> RuleSet -> Int
+part2Problem s rs = part1Difference $ applySteps rs s 40
+
+solvePart2 = part2Problem inputTemplate inputRules
