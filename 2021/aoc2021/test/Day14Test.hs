@@ -13,6 +13,7 @@ day14PureTests = [
   , makeTest "NBBBCNCCNBBNBNBBCHBHHBCHB" (applySteps test1Rules test1Template 3)
   , makeTest "NBBNBNBBCCNBCNCCNBBNBBNBBBNBBNBBCBHCBHHNHCBBCBHCB" (applySteps test1Rules test1Template 4)
   , makeTest 1588 test1Output
+  , makeTest 4244 solvePart1
   ]
 
 day14Tests = day14PureTests
