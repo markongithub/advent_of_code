@@ -12,6 +12,7 @@ type Node = (Int, Int)
 data Grid = Grid Int Int (Map Node Label)
 type Label = Int
 type Distance = Int
+type NodeQueue = Set (Int, Node)
 
 type Distances = Map Node (Distance, Node)
 
@@ -27,35 +28,37 @@ minimumBySnd ls = let
   func (_, x) (_, y) = compare x y
   in minimumBy func ls
 
-updateDistance :: Distances -> (Node, Distance, Node) -> Distances
-updateDistance ds (n, dist, prev) = let
-  minByFst (d1, p1) (d2, p2) = if (d1 < d2) then (d1, p1) else (d2, p2)
-  in Map.unionWith minByFst ds (Map.singleton n (dist, prev))
+updateDistance :: (Distances, NodeQueue) -> (Node, Distance, Node) -> (Distances, NodeQueue)
+updateDistance (ds, q) (n, dist, prev) = let
+  better = Map.notMember n ds || dist < (fst $ lookupOrError n ds "updateDistance")
+  in case better of
+    True -> (Map.insert n (dist, prev) ds, Set.insert (dist, n) q)
+    False -> (ds, q)
 
 lookupOrError :: (Ord k, Show k) => k -> Map k a -> String -> a
 lookupOrError k m errorStr = case Map.lookup k m of
   Nothing -> error (errorStr ++ " (key was " ++ show k ++ ")")
   Just a -> a
 
-dijkstra0 :: Grid -> Distances -> Set Node -> Node -> Node -> Distances
-dijkstra0 (Grid dimension factor grid) distances visited current destination = let
+dijkstra0 :: Grid -> Distances -> Set Node -> Set (Int, Node) -> Node -> Node -> Distances
+dijkstra0 (Grid dimension factor grid) distances visited queue current destination = let
   currentDistance = fst $ lookupOrError current distances "distances!current"
   neighbors = findNeighbors dimension factor current
   neighborDistances = map (\n -> currentDistance + (lookupCoords (Grid dimension factor grid) n)) neighbors
   neighborsWithDists = zip3 neighbors neighborDistances (repeat current)
-  newDistances = if (null neighborsWithDists) then error "neighborsWithDists is empty" else foldl updateDistance distances neighborsWithDists
+  (newDistances, newQueue) = if (null neighborsWithDists) then error "neighborsWithDists is empty" else foldl updateDistance (distances, queue) neighborsWithDists
   newVisited = Set.insert current visited
-  candidates = Set.toList $ Set.difference (Set.fromList $ Map.keys newDistances) newVisited
-  candidatesWithWeights = zip candidates (map (\n -> (fst (lookupOrError n newDistances "candidatesWithWeights"))) candidates)
-  newCurrent = if (null candidatesWithWeights) then error "candidatesWithWeights is empty" else fst $ minimumBySnd candidatesWithWeights
-  recurse = dijkstra0 (Grid dimension factor grid) newDistances newVisited newCurrent destination
+  newCurrent = snd $ Set.findMin newQueue
+  finalQueue = Set.deleteMin newQueue
+  recurse = dijkstra0 (Grid dimension factor grid) newDistances newVisited finalQueue newCurrent destination
   in if current == destination then distances else recurse
 
 dijkstra :: Grid -> Node -> Node -> Distances
 dijkstra gridD source destination = let
   initialDistances = Map.singleton source (0, undefined)
   initialVisited = Set.empty
-  in dijkstra0 gridD initialDistances initialVisited source destination
+  initialQueue = Set.empty
+  in dijkstra0 gridD initialDistances initialVisited initialQueue source destination
 
 traceBack :: Distances -> Node -> Node -> [Node] -> [Node]
 traceBack ds source destination accu = let

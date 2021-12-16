@@ -8,10 +8,10 @@ makeTest expected actual = testCase [] (assertEqual [] expected actual)
 
 day15PureTests = [
     makeTest 40 test1Output
---  , makeTest 621 part1Output
+  , makeTest 621 part1Output
   , makeTest 6 (lookupCoords test2Grid (49,0))
   , makeTest 315 (solvePart1 test2Grid)
-  , makeTest 315 part2Output
+  , makeTest 2904 part2Output
   ]
 
 day15Tests = day15PureTests
