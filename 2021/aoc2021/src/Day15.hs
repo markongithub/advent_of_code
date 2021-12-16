@@ -40,6 +40,14 @@ lookupOrError k m errorStr = case Map.lookup k m of
   Nothing -> error (errorStr ++ " (key was " ++ show k ++ ")")
   Just a -> a
 
+nextFromQueue :: Set Node -> NodeQueue -> (Node, NodeQueue)
+nextFromQueue visited queue = let
+  minElement = snd $ Set.findMin queue
+  nextQueue = Set.deleteMin queue
+  in case Set.member minElement visited of
+    True -> nextFromQueue visited nextQueue
+    False -> (minElement, nextQueue)
+
 dijkstra0 :: Grid -> Distances -> Set Node -> Set (Int, Node) -> Node -> Node -> Distances
 dijkstra0 (Grid dimension factor grid) distances visited queue current destination = let
   currentDistance = fst $ lookupOrError current distances "distances!current"
@@ -48,8 +56,7 @@ dijkstra0 (Grid dimension factor grid) distances visited queue current destinati
   neighborsWithDists = zip3 neighbors neighborDistances (repeat current)
   (newDistances, newQueue) = if (null neighborsWithDists) then error "neighborsWithDists is empty" else foldl updateDistance (distances, queue) neighborsWithDists
   newVisited = Set.insert current visited
-  newCurrent = snd $ Set.findMin newQueue
-  finalQueue = Set.deleteMin newQueue
+  (newCurrent, finalQueue) = nextFromQueue newVisited newQueue
   recurse = dijkstra0 (Grid dimension factor grid) newDistances newVisited finalQueue newCurrent destination
   in if current == destination then distances else recurse
 
