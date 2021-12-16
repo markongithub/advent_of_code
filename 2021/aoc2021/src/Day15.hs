@@ -16,9 +16,10 @@ type Distance = Int
 type Distances = Map Node (Distance, Node)
 
 findNeighbors :: Int -> Int -> Node -> [Node]
-findNeighbors xMax yMax (x,y) = let
+findNeighbors dimension factor (x,y) = let
+  maxVal = (dimension * factor) - 1
   withBadValues = [(x,y-1), (x-1,y), (x,y+1), (x+1,y)]
-  outOfBounds (x,y) = x < 0 || y < 0 || x > xMax || y > yMax
+  outOfBounds (x,y) = x < 0 || y < 0 || x > maxVal || y > maxVal
   in filter (not . outOfBounds) withBadValues
 
 minimumBySnd :: [(a, Int)] -> (a, Int)
@@ -37,24 +38,24 @@ lookupOrError k m errorStr = case Map.lookup k m of
   Just a -> a
 
 shortestPaths0 :: Grid -> Distances -> Set Node -> Node -> Node -> Distances
-shortestPaths0 (Grid xMax yMax grid) distances unvisited current destination = let
+shortestPaths0 (Grid dimension factor grid) distances unvisited current destination = let
   currentDistance = fst $ lookupOrError current distances "distances!current"
-  neighbors = findNeighbors xMax yMax current
-  neighborDistances = map (\n -> currentDistance + (lookupOrError n grid "could not find neighbor in grid")) neighbors
+  neighbors = findNeighbors dimension factor current
+  neighborDistances = map (\n -> currentDistance + (lookupCoords (Grid dimension factor grid) n)) neighbors
   neighborsWithDists = zip3 neighbors neighborDistances (repeat current)
   newDistances = foldl updateDistance distances neighborsWithDists
   newUnvisited = Set.delete current unvisited
   candidates = Set.toList $ Set.intersection newUnvisited (Set.fromList $ Map.keys newDistances)
   candidatesWithWeights = zip candidates (map (\n -> (fst (lookupOrError n newDistances "candidatesWithWeights"))) candidates)
   newCurrent = fst $ minimumBySnd candidatesWithWeights
-  recurse = shortestPaths0 (Grid xMax yMax grid) newDistances newUnvisited newCurrent destination
+  recurse = shortestPaths0 (Grid dimension factor grid) newDistances newUnvisited newCurrent destination
   in if current == destination then distances else recurse
 
 shortestPaths :: Grid -> Node -> Node -> Distances
-shortestPaths (Grid xMax yMax grid) source destination = let
+shortestPaths (Grid dimension factor grid) source destination = let
   initialDistances = Map.singleton source (0, undefined)
   initialUnvisited = Set.fromList $ Map.keys grid
-  in shortestPaths0 (Grid xMax yMax grid) initialDistances initialUnvisited source destination
+  in shortestPaths0 (Grid dimension factor grid) initialDistances initialUnvisited source destination
 
 traceBack :: Distances -> Node -> Node -> [Node] -> [Node]
 traceBack ds source destination accu = let
@@ -82,12 +83,12 @@ rowsToGrid strs = let
   rowPairs = zip rowIDs strs
   nodesByRow :: [[(Node, Label)]]
   nodesByRow = map rowToPairs rowPairs
-  in Grid (length (head strs) - 1) (length strs - 1) $ Map.fromList $ concat nodesByRow
+  in Grid (length strs) 1 $ Map.fromList $ concat nodesByRow
 
 lowerRight :: Grid -> (Int, Int)
-lowerRight grid = let
-  Grid xMax yMax _ = grid
-  in (xMax, yMax)
+lowerRight (Grid dimension factor _) = let
+  maxVal = (dimension * factor) - 1
+  in (maxVal, maxVal)
 
 test1Rows = [
     "1163751742"
@@ -211,4 +212,21 @@ puzzleInput = [
   , "2798217219738855755749522266326446838229933717751932193589926835391162658998953169476898614839119719"
   ]
 
+offset :: Int -> Int -> Int
+offset x y = let
+  naiveSum = x + y
+  in if naiveSum > 9 then naiveSum - 9 else naiveSum
+
+lookupCoords :: Grid -> Node -> Int
+lookupCoords (Grid dimension _ grid) (x, y) = let
+  (xDiv, xMod) = x `divMod` dimension
+  (yDiv, yMod) = y `divMod` dimension
+  gridVal = lookupOrError (xMod, yMod) grid "lookupCoords"
+  in offset gridVal (xDiv + yDiv)
+
+gridTimesFive :: Grid -> Grid
+gridTimesFive (Grid dimension factor grid) = Grid dimension 5 grid
+
 part1Output = solvePart1 $ rowsToGrid puzzleInput
+
+test2Grid = gridTimesFive test1Grid
