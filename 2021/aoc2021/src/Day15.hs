@@ -37,8 +37,8 @@ lookupOrError k m errorStr = case Map.lookup k m of
   Nothing -> error (errorStr ++ " (key was " ++ show k ++ ")")
   Just a -> a
 
-shortestPaths0 :: Grid -> Distances -> Set Node -> Node -> Node -> Distances
-shortestPaths0 (Grid dimension factor grid) distances visited current destination = let
+dijkstra0 :: Grid -> Distances -> Set Node -> Node -> Node -> Distances
+dijkstra0 (Grid dimension factor grid) distances visited current destination = let
   currentDistance = fst $ lookupOrError current distances "distances!current"
   neighbors = findNeighbors dimension factor current
   neighborDistances = map (\n -> currentDistance + (lookupCoords (Grid dimension factor grid) n)) neighbors
@@ -48,24 +48,24 @@ shortestPaths0 (Grid dimension factor grid) distances visited current destinatio
   candidates = Set.toList $ Set.difference (Set.fromList $ Map.keys newDistances) newVisited
   candidatesWithWeights = zip candidates (map (\n -> (fst (lookupOrError n newDistances "candidatesWithWeights"))) candidates)
   newCurrent = if (null candidatesWithWeights) then error "candidatesWithWeights is empty" else fst $ minimumBySnd candidatesWithWeights
-  recurse = shortestPaths0 (Grid dimension factor grid) newDistances newVisited newCurrent destination
+  recurse = dijkstra0 (Grid dimension factor grid) newDistances newVisited newCurrent destination
   in if current == destination then distances else recurse
 
-shortestPaths :: Grid -> Node -> Node -> Distances
-shortestPaths gridD source destination = let
+dijkstra :: Grid -> Node -> Node -> Distances
+dijkstra gridD source destination = let
   initialDistances = Map.singleton source (0, undefined)
   initialVisited = Set.empty
-  in shortestPaths0 gridD initialDistances initialVisited source destination
+  in dijkstra0 gridD initialDistances initialVisited source destination
 
 traceBack :: Distances -> Node -> Node -> [Node] -> [Node]
 traceBack ds source destination accu = let
   (_, next) = lookupOrError destination ds "ds!destination"
   newAccu = next:accu
-  in if source == destination then reverse accu else traceBack ds source next newAccu
+  in if source == destination then accu else traceBack ds source next newAccu
 
 shortestPath :: Grid -> Node -> Node -> ([Node], Distance)
 shortestPath g source destination = let
-  paths = shortestPaths g source destination
+  paths = dijkstra g source destination
   fullLength = fst $ lookupOrError destination paths "paths!destination"
   path = traceBack paths source destination []
   in (path, fullLength)
