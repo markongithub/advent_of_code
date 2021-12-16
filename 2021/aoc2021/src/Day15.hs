@@ -38,24 +38,24 @@ lookupOrError k m errorStr = case Map.lookup k m of
   Just a -> a
 
 shortestPaths0 :: Grid -> Distances -> Set Node -> Node -> Node -> Distances
-shortestPaths0 (Grid dimension factor grid) distances unvisited current destination = let
+shortestPaths0 (Grid dimension factor grid) distances visited current destination = let
   currentDistance = fst $ lookupOrError current distances "distances!current"
   neighbors = findNeighbors dimension factor current
   neighborDistances = map (\n -> currentDistance + (lookupCoords (Grid dimension factor grid) n)) neighbors
   neighborsWithDists = zip3 neighbors neighborDistances (repeat current)
-  newDistances = foldl updateDistance distances neighborsWithDists
-  newUnvisited = Set.delete current unvisited
-  candidates = Set.toList $ Set.intersection newUnvisited (Set.fromList $ Map.keys newDistances)
+  newDistances = if (null neighborsWithDists) then error "neighborsWithDists is empty" else foldl updateDistance distances neighborsWithDists
+  newVisited = Set.insert current visited
+  candidates = Set.toList $ Set.difference (Set.fromList $ Map.keys newDistances) newVisited
   candidatesWithWeights = zip candidates (map (\n -> (fst (lookupOrError n newDistances "candidatesWithWeights"))) candidates)
-  newCurrent = fst $ minimumBySnd candidatesWithWeights
-  recurse = shortestPaths0 (Grid dimension factor grid) newDistances newUnvisited newCurrent destination
+  newCurrent = if (null candidatesWithWeights) then error "candidatesWithWeights is empty" else fst $ minimumBySnd candidatesWithWeights
+  recurse = shortestPaths0 (Grid dimension factor grid) newDistances newVisited newCurrent destination
   in if current == destination then distances else recurse
 
 shortestPaths :: Grid -> Node -> Node -> Distances
-shortestPaths (Grid dimension factor grid) source destination = let
+shortestPaths gridD source destination = let
   initialDistances = Map.singleton source (0, undefined)
-  initialUnvisited = Set.fromList $ Map.keys grid
-  in shortestPaths0 (Grid dimension factor grid) initialDistances initialUnvisited source destination
+  initialVisited = Set.empty
+  in shortestPaths0 gridD initialDistances initialVisited source destination
 
 traceBack :: Distances -> Node -> Node -> [Node] -> [Node]
 traceBack ds source destination accu = let
@@ -230,3 +230,5 @@ gridTimesFive (Grid dimension factor grid) = Grid dimension 5 grid
 part1Output = solvePart1 $ rowsToGrid puzzleInput
 
 test2Grid = gridTimesFive test1Grid
+
+part2Output = solvePart1 $ gridTimesFive $ rowsToGrid puzzleInput
