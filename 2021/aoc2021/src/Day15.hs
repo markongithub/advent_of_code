@@ -1,7 +1,6 @@
 module Day15 where
 
 import Data.Char(digitToInt)
-import Data.List (minimumBy)
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Set (Set)
@@ -22,11 +21,6 @@ findNeighbors dimension factor (x,y) = let
   withBadValues = [(x,y-1), (x-1,y), (x,y+1), (x+1,y)]
   outOfBounds (x,y) = x < 0 || y < 0 || x > maxVal || y > maxVal
   in filter (not . outOfBounds) withBadValues
-
-minimumBySnd :: [(a, Int)] -> (a, Int)
-minimumBySnd ls = let
-  func (_, x) (_, y) = compare x y
-  in minimumBy func ls
 
 updateDistance :: (Distances, NodeQueue) -> (Node, Distance, Node) -> (Distances, NodeQueue)
 updateDistance (ds, q) (n, dist, prev) = let
