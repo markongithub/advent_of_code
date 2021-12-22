@@ -19,7 +19,7 @@ day16PureTests = [
   , makeTest 23 (part1Hex "C0015000016115A2E0802F182340")
   , makeTest 31 (part1Hex "A0016C880162017C3686B18A3D4780")
   , makeTest 860 solvePart1
-  , makeTest 860 solvePart2
+  , makeTest 470949537659 solvePart2
   ]
 
 day16Tests = day16PureTests
