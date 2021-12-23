@@ -20,6 +20,8 @@ day21PureTests = [
   , makeTest (GameState 0 3 1000 745 993 False) (applyRollsUntilEnd testStart (concat $ repeat [1..100]))
   , makeTest 739785 part1Test
   , makeTest 605070 solvePart1
+  , makeTest 444356092776315 part2Test
+  , makeTest 218433063958910 solvePart2
   ]
 
 day21Tests = day21PureTests
