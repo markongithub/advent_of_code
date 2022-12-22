@@ -92,70 +92,8 @@ availableMoves bMap ((x, y), turn) = let
     in zip emptySpaces2 $ repeat (turn + 1)
 
 type Node = (Coords, Int)
-type Distance = Int
-type NodeQueue = Set (Distance, Node)
-type Distances = Map Node (Distance, Node)
-type TargetFunc = Node -> Bool
-
 findNeighbors :: BlizzardMap2 -> Node -> [Node]
 findNeighbors = availableMoves
-
-updateDistance :: (Distances, NodeQueue) -> (Node, Distance, Node) -> (Distances, NodeQueue)
-updateDistance (ds, q) (n, dist, prev) = let
-  better = Map.notMember n ds || dist < (fst $ lookupOrError n ds "updateDistance")
-  in case better of
-    True -> (Map.insert n (dist, prev) ds, Set.insert (dist, n) q)
-    False -> (ds, q)
-
-lookupOrError :: (Ord k, Show k) => k -> Map k a -> String -> a
-lookupOrError k m errorStr = case Map.lookup k m of
-  Nothing -> error (errorStr ++ " (key was " ++ show k ++ ")")
-  Just a -> a
-
-dijkstra0 :: BlizzardMap2 -> Distances -> Set Node -> Set (Int, Node) -> Node -> TargetFunc -> Maybe Distances
-dijkstra0 initialMap distances visited queue current destination = let
-  currentDistance = fst $ lookupOrError current distances "distances!current"
-  neighborsD = findNeighbors initialMap current
-  neighbors = neighborsD -- if null neighborsD then error ("no neighbors from " ++ show current) else neighborsD
-  neighborDistances :: [Int]
-  neighborDistances = map (\n -> currentDistance + 1) neighbors
-  neighborsWithDists = zip3 neighbors neighborDistances (repeat current)
-  (newDistances, newQueue) = foldl updateDistance (distances, queue) neighborsWithDists -- if (null neighborsWithDists) then error "neighborsWithDists is empty" else foldl updateDistance (distances, queue) neighborsWithDists
-  newVisited = Set.insert current visited
-  newCurrent = snd $ Set.findMin newQueue
-  finalQueue = Set.deleteMin newQueue
-  recurse = dijkstra0 initialMap newDistances newVisited finalQueue newCurrent destination
-  in if destination current
-        then Just distances
-        else if Set.null newQueue
-               then Nothing
-               else recurse
-
-dijkstra :: BlizzardMap2 -> Node -> TargetFunc -> Maybe Distances
-dijkstra initialMap source destination = let
-  initialDistances = Map.singleton source (0, undefined)
-  initialVisited = Set.empty
-  initialQueue = Set.empty
-  in dijkstra0 initialMap initialDistances initialVisited initialQueue source destination
-
-traceBack :: Distances -> Node -> Node -> [Node] -> [Node]
-traceBack ds source destination accu = let
-  (_, next) = lookupOrError destination ds "ds!destination"
-  newAccu = next:accu
-  in if source == destination then accu else traceBack ds source next newAccu
-
-shortestPath :: BlizzardMap2 -> Node -> TargetFunc -> Maybe ([Node], Distance)
-shortestPath initialMap source destination = let
-  dijkstraOutput = dijkstra initialMap source destination
-  candidates :: Distances -> [Node]
-  candidates paths = filter destination $ Map.keys paths
-  lookupDist paths n = fst $ paths!n
-  destNode paths = head $ sortOn (lookupDist paths) $ candidates paths
-  fullLength paths = fst $ lookupOrError (destNode paths) paths "paths!destination"
-  path paths = traceBack paths source (destNode paths) []
-  in case dijkstraOutput of
-    Just paths -> Just (path paths, fullLength paths)
-    Nothing -> Nothing
 
 startNode :: BlizzardMap2 -> Node
 startNode (BlizzardMap2 (minX, _) (_, maxY) _ _) = ((minX + 1, maxY), 0)
@@ -175,7 +113,9 @@ testInput2 = [
 solvePart1Pure :: [String] -> Int
 solvePart1Pure strs = let
   bMap = parseGrid2 strs
-  in snd $ fromJust $ shortestPath bMap (startNode bMap) (isGoalNode bMap)
+  BlizzardMap2 (minX, minY) (maxX, maxY) _ _ = bMap
+  goalCoords = (maxX - 1, minY)
+  in snd $ shortestPathAStar (startNode bMap) (neighborsAStar bMap) (isGoalNode bMap) (\n -> manhattanDistance goalCoords (fst n))
 
 solvePart1 = do
   text <- readFile "data/input24.txt"
@@ -222,19 +162,6 @@ hasBlizzard bMap (x, y) turn = let
   occupiedByBlizzard (startRow, South) = y == ((startRow -1 - turn) `mod` vMod) + 1
   in any occupiedByBlizzard $ horizontals ++ verticals
 
-solvePart2Pure :: [String] -> (Int, Int, Int, Int)
-solvePart2Pure strs = let
-  bMap = parseGrid2 strs
-  BlizzardMap2 (minX, minY) (maxX, maxY) _ _ = bMap
-  goalCoords = (maxX - 1, minY)
-  firstDist = snd $ fromJust $ shortestPath bMap (startNode bMap) (isGoalNode bMap)
-  startCoords = fst $ startNode bMap
-  isStartCoords (coords, turn) = coords == startCoords
-  secondDist = snd $ fromJust $ shortestPath bMap (goalCoords, firstDist) isStartCoords
-  thirdStartTime = firstDist + secondDist
-  thirdDist = snd $ fromJust $ shortestPath bMap (startCoords, thirdStartTime) (isGoalNode bMap)
-  in (firstDist, secondDist, thirdDist, firstDist+secondDist+thirdDist)
-
 solvePart2 = do
   text <- readFile "data/input24.txt"
   return $ solvePart2AStarPure $ lines text
@@ -258,17 +185,3 @@ solvePart2AStarPure strs = let
   thirdStartTime = firstDist + secondDist
   thirdDist = snd $ shortestPathAStar (startCoords, thirdStartTime) (neighborsAStar bMap) (isGoalNode bMap) (\n -> manhattanDistance goalCoords (fst n))
   in (firstDist, secondDist, thirdDist, firstDist+secondDist+thirdDist)
-
-solvePart2BFSPure :: [String] -> (Int, Int, Int, Int)
-solvePart2BFSPure strs = let
-  bMap = parseGrid2 strs
-  BlizzardMap2 (minX, minY) (maxX, maxY) _ _ = bMap
-  goalCoords = (maxX - 1, minY)
-  firstDist = snd $ shortestPathBFS (startNode bMap) (availableMoves bMap) (isGoalNode bMap)
-  startCoords = fst $ startNode bMap
-  isStartCoords (coords, turn) = coords == startCoords
-  secondDist = snd $ shortestPathBFS (goalCoords, firstDist) (availableMoves bMap) isStartCoords
-  thirdStartTime = firstDist + secondDist
-  thirdDist = snd $ shortestPathBFS (startCoords, thirdStartTime) (availableMoves bMap) (isGoalNode bMap)
-  in (firstDist, secondDist, thirdDist, firstDist+secondDist+thirdDist)
-
