@@ -1,6 +1,6 @@
 module Day24 where
 
-import Data.List (partition, sortOn)
+import Data.List (partition)
 import Data.Map (Map, (!))
 import qualified Data.Map as Map
 import Data.Maybe (fromJust)
@@ -8,7 +8,6 @@ import Data.Set (Set)
 import qualified Data.Set as Set
 
 import AStar (shortestPathAStar)
-import BreadthFirstSearch (shortestPathBFS)
 
 type Coords = (Int, Int)
 
@@ -17,18 +16,6 @@ data Direction = North | South | West | East
 
 type Blizzard = (Coords, Direction)
 type BlizzardMap = Set Blizzard
-
-moveDirection :: Coords -> Coords -> Blizzard -> Coords
-moveDirection (_, bottomWall) (_, topWall) ((x, y), North) = (x, if y + 1 == topWall then bottomWall + 1 else y + 1)
-moveDirection (_, bottomWall) (_, topWall) ((x, y), South) = (x, if y - 1 == bottomWall then topWall - 1 else y - 1)
-moveDirection (leftWall, _) (rightWall, _) ((x, y), East) = (if x + 1 == rightWall then leftWall + 1 else x + 1, y)
-moveDirection (leftWall, _) (rightWall, _) ((x, y), West) = (if x - 1 == leftWall then rightWall - 1 else x - 1, y)
-
-moveAllBlizzards :: Coords -> Coords -> BlizzardMap -> BlizzardMap
-moveAllBlizzards bottomLeft topRight bMap = let
-  aToA :: Blizzard -> Blizzard
-  aToA (coords, dir) = (moveDirection bottomLeft topRight (coords, dir), dir)
-  in Set.map aToA bMap
 
 parseChar :: Char -> Maybe Direction
 parseChar 'v' = Just South
@@ -64,12 +51,6 @@ testInput = [
   , "#.....#"
   , "#####.#"
   ]
-
-moveNTurns :: Int -> Coords -> Coords -> BlizzardMap -> BlizzardMap
-moveNTurns 0 _ _ bMap = bMap
-moveNTurns turns bl tr bMap = let
-  nextMap = moveAllBlizzards bl tr bMap
-  in moveNTurns (turns - 1) bl tr nextMap
 
 isGoal :: Coords -> Coords -> Coords -> Bool
 isGoal (_, minY) (maxX, _) (x, y) = x == maxX - 1 && y == minY
