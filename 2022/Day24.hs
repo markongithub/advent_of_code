@@ -7,6 +7,9 @@ import Data.Maybe (fromJust)
 import Data.Set (Set)
 import qualified Data.Set as Set
 
+import AStar (shortestPathAStar)
+import BreadthFirstSearch (shortestPathBFS)
+
 type Coords = (Int, Int)
 
 data Direction = North | South | West | East
@@ -75,8 +78,8 @@ availableMoves :: BlizzardMap2 -> Node -> [Node]
 availableMoves bMap ((x, y), turn) = let
     BlizzardMap2 (minX, minY) (maxX, maxY) _ _ = bMap
     allMoves :: [Coords]
-    allMoves = [(x - 1, y), (x, y), (x + 1, y),
-                (x, (y - 1)), (x, (y + 1))]
+    allMoves = [ (x + 1, y), (x, (y - 1)), (x - 1, y), (x, y),
+                 (x, (y + 1))]
     unoccupied :: Coords -> Bool
     unoccupied (q, r) = not $ hasBlizzard bMap (q,r) (turn + 1)
     emptySpaces1 :: [Coords]
@@ -234,4 +237,38 @@ solvePart2Pure strs = let
 
 solvePart2 = do
   text <- readFile "data/input24.txt"
-  return $ solvePart2Pure $ lines text
+  return $ solvePart2AStarPure $ lines text
+
+-- shortestPathAStar :: (Eq a, Ord a) => a -> NeighborFunc a -> TargetFunc a -> HeuristicFunc a -> ([a], Int)
+manhattanDistance :: Coords -> Coords -> Int
+manhattanDistance (x1, y1) (x2, y2) = abs (x1 - x2) + abs (y1 - y2)
+
+neighborsAStar :: BlizzardMap2 -> Node -> [(Node, Int)]
+neighborsAStar bMap node = zip (availableMoves bMap node) (repeat 1)
+
+solvePart2AStarPure :: [String] -> (Int, Int, Int, Int)
+solvePart2AStarPure strs = let
+  bMap = parseGrid2 strs
+  BlizzardMap2 (minX, minY) (maxX, maxY) _ _ = bMap
+  goalCoords = (maxX - 1, minY)
+  firstDist = snd $ shortestPathAStar (startNode bMap) (neighborsAStar bMap) (isGoalNode bMap) (\n -> manhattanDistance goalCoords (fst n))
+  startCoords = fst $ startNode bMap
+  isStartCoords (coords, turn) = coords == startCoords
+  secondDist = snd $ shortestPathAStar (goalCoords, firstDist) (neighborsAStar bMap) isStartCoords (\n -> manhattanDistance startCoords (fst n))
+  thirdStartTime = firstDist + secondDist
+  thirdDist = snd $ shortestPathAStar (startCoords, thirdStartTime) (neighborsAStar bMap) (isGoalNode bMap) (\n -> manhattanDistance goalCoords (fst n))
+  in (firstDist, secondDist, thirdDist, firstDist+secondDist+thirdDist)
+
+solvePart2BFSPure :: [String] -> (Int, Int, Int, Int)
+solvePart2BFSPure strs = let
+  bMap = parseGrid2 strs
+  BlizzardMap2 (minX, minY) (maxX, maxY) _ _ = bMap
+  goalCoords = (maxX - 1, minY)
+  firstDist = snd $ shortestPathBFS (startNode bMap) (availableMoves bMap) (isGoalNode bMap)
+  startCoords = fst $ startNode bMap
+  isStartCoords (coords, turn) = coords == startCoords
+  secondDist = snd $ shortestPathBFS (goalCoords, firstDist) (availableMoves bMap) isStartCoords
+  thirdStartTime = firstDist + secondDist
+  thirdDist = snd $ shortestPathBFS (startCoords, thirdStartTime) (availableMoves bMap) (isGoalNode bMap)
+  in (firstDist, secondDist, thirdDist, firstDist+secondDist+thirdDist)
+
