@@ -71,22 +71,22 @@ moveNTurns turns bl tr bMap = let
 isGoal :: Coords -> Coords -> Coords -> Bool
 isGoal (_, minY) (maxX, _) (x, y) = x == maxX - 1 && y == minY
 
-availableMoves :: Coords -> Coords -> BlizzardMap -> Coords -> [Coords]
-availableMoves (minX, minY) (maxX, maxY) bMap (x, y) = let
-    nextBMap = moveAllBlizzards (minX, minY) (maxX, maxY) bMap
+availableMoves :: BlizzardMap2 -> Node -> [Node]
+availableMoves bMap ((x, y), turn) = let
+    BlizzardMap2 (minX, minY) (maxX, maxY) _ _ = bMap
     allMoves :: [Coords]
     allMoves = [(x - 1, y), (x, y), (x + 1, y),
                 (x, (y - 1)), (x, (y + 1))]
     unoccupied :: Coords -> Bool
-    unoccupied (x, y) = Set.null $ Set.filter (\p -> fst p == (x, y)) nextBMap
+    unoccupied (q, r) = not $ hasBlizzard bMap (q,r) (turn + 1)
     emptySpaces1 :: [Coords]
     emptySpaces1 = filter unoccupied allMoves
     inBounds :: Coords -> Bool
     inBounds (x, y) = x > minX && x < maxX && y > minY && y < maxY
     allowed :: Coords -> Bool
-    allowed (x, y) = (x,y) == fst (startNode (minX, minY) (maxX, maxY)) || isGoal (minX, minY) (maxX, maxY) (x, y) || inBounds (x, y)
+    allowed (x, y) = (x,y) == fst (startNode bMap) || isGoal (minX, minY) (maxX, maxY) (x, y) || inBounds (x, y)
     emptySpaces2 = filter allowed emptySpaces1
-    in emptySpaces2
+    in zip emptySpaces2 $ repeat (turn + 1)
 
 type Node = (Coords, Int)
 type Distance = Int
@@ -94,11 +94,8 @@ type NodeQueue = Set (Distance, Node)
 type Distances = Map Node (Distance, Node)
 type TargetFunc = Node -> Bool
 
-findNeighbors :: Coords -> Coords -> BlizzardMap -> Node -> [Node]
-findNeighbors bl tr initialMap (coords, turn) = let
-  nextMap = moveNTurns turn bl tr initialMap
-  nextCoords = availableMoves bl tr nextMap coords
-  in zip nextCoords $ repeat (turn + 1)
+findNeighbors :: BlizzardMap2 -> Node -> [Node]
+findNeighbors = availableMoves
 
 updateDistance :: (Distances, NodeQueue) -> (Node, Distance, Node) -> (Distances, NodeQueue)
 updateDistance (ds, q) (n, dist, prev) = let
@@ -112,10 +109,10 @@ lookupOrError k m errorStr = case Map.lookup k m of
   Nothing -> error (errorStr ++ " (key was " ++ show k ++ ")")
   Just a -> a
 
-dijkstra0 :: Coords -> Coords -> BlizzardMap -> Distances -> Set Node -> Set (Int, Node) -> Node -> TargetFunc -> Maybe Distances
-dijkstra0 bl tr initialMap distances visited queue current destination = let
+dijkstra0 :: BlizzardMap2 -> Distances -> Set Node -> Set (Int, Node) -> Node -> TargetFunc -> Maybe Distances
+dijkstra0 initialMap distances visited queue current destination = let
   currentDistance = fst $ lookupOrError current distances "distances!current"
-  neighborsD = findNeighbors bl tr initialMap current
+  neighborsD = findNeighbors initialMap current
   neighbors = neighborsD -- if null neighborsD then error ("no neighbors from " ++ show current) else neighborsD
   neighborDistances :: [Int]
   neighborDistances = map (\n -> currentDistance + 1) neighbors
@@ -124,19 +121,19 @@ dijkstra0 bl tr initialMap distances visited queue current destination = let
   newVisited = Set.insert current visited
   newCurrent = snd $ Set.findMin newQueue
   finalQueue = Set.deleteMin newQueue
-  recurse = dijkstra0 bl tr initialMap newDistances newVisited finalQueue newCurrent destination
+  recurse = dijkstra0 initialMap newDistances newVisited finalQueue newCurrent destination
   in if destination current
         then Just distances
         else if Set.null newQueue
                then Nothing
                else recurse
 
-dijkstra :: Coords -> Coords -> BlizzardMap -> Node -> TargetFunc -> Maybe Distances
-dijkstra bl tr initialMap source destination = let
+dijkstra :: BlizzardMap2 -> Node -> TargetFunc -> Maybe Distances
+dijkstra initialMap source destination = let
   initialDistances = Map.singleton source (0, undefined)
   initialVisited = Set.empty
   initialQueue = Set.empty
-  in dijkstra0 bl tr initialMap initialDistances initialVisited initialQueue source destination
+  in dijkstra0 initialMap initialDistances initialVisited initialQueue source destination
 
 traceBack :: Distances -> Node -> Node -> [Node] -> [Node]
 traceBack ds source destination accu = let
@@ -144,9 +141,9 @@ traceBack ds source destination accu = let
   newAccu = next:accu
   in if source == destination then accu else traceBack ds source next newAccu
 
-shortestPath :: Coords -> Coords -> BlizzardMap -> Node -> TargetFunc -> Maybe ([Node], Distance)
-shortestPath bl tr initialMap source destination = let
-  dijkstraOutput = dijkstra bl tr initialMap source destination
+shortestPath :: BlizzardMap2 -> Node -> TargetFunc -> Maybe ([Node], Distance)
+shortestPath initialMap source destination = let
+  dijkstraOutput = dijkstra initialMap source destination
   candidates :: Distances -> [Node]
   candidates paths = filter destination $ Map.keys paths
   lookupDist paths n = fst $ paths!n
@@ -157,11 +154,11 @@ shortestPath bl tr initialMap source destination = let
     Just paths -> Just (path paths, fullLength paths)
     Nothing -> Nothing
 
-startNode :: Coords -> Coords -> Node
-startNode (minX, _) (_, maxY) = ((minX + 1, maxY), 0)
+startNode :: BlizzardMap2 -> Node
+startNode (BlizzardMap2 (minX, _) (_, maxY) _ _) = ((minX + 1, maxY), 0)
 
-isGoalNode :: Coords -> Coords -> Node -> Bool
-isGoalNode bl tr (coords, _) = isGoal bl tr coords
+isGoalNode :: BlizzardMap2 -> Node -> Bool
+isGoalNode (BlizzardMap2 bl tr _ _) (coords, _) = isGoal bl tr coords
 
 testInput2 = [
     "#.######"
@@ -174,8 +171,8 @@ testInput2 = [
 
 solvePart1Pure :: [String] -> Int
 solvePart1Pure strs = let
-  (bl, tr, bMap) = parseGrid strs
-  in snd $ fromJust $ shortestPath bl tr bMap (startNode bl tr) (isGoalNode bl tr)
+  bMap = parseGrid2 strs
+  in snd $ fromJust $ shortestPath bMap (startNode bMap) (isGoalNode bMap)
 
 solvePart1 = do
   text <- readFile "data/input24.txt"
@@ -196,8 +193,8 @@ parseGrid2 strs = let
   isHorizontal (_, d) = d == West || d == East
   (horizontals, verticals) = partition isHorizontal $ Set.toList bSet
   bToB2Horizontal :: (Coords, Direction) -> (Int, (Int, Direction))
-  bToB2Horizontal ((x, y), d) = (x, (y, d))
-  bToB2Vertical ((x, y), d) = (y, (x, d))
+  bToB2Horizontal ((x, y), d) = (y, (x, d))
+  bToB2Vertical ((x, y), d) = (x, (y, d))
   insertIntoListMap :: Map Int [a] -> (Int, a) -> Map Int [a]
   insertIntoListMap oldMap (key, value) = case Map.lookup key oldMap of
     Nothing -> Map.insert key [value] oldMap
@@ -212,12 +209,29 @@ hasBlizzard :: BlizzardMap2 -> Coords -> Int -> Bool
 hasBlizzard bMap (x, y) turn = let
   BlizzardMap2 (minX, minY) (maxX, maxY) hMap vMap = bMap
   horizontals :: [Blizzard2]
-  horizontals = Map.findWithDefault [] x hMap
-  verticals = Map.findWithDefault [] y vMap
+  horizontals = Map.findWithDefault [] y hMap
+  verticals = Map.findWithDefault [] x vMap
   hMod = maxX - minX - 1
   vMod = maxY - minY - 1
-  occupiedByBlizzard (startCol, East) = (x - turn) `mod` hMod == startCol
-  occupiedByBlizzard (startCol, West) = (x + turn) `mod` hMod == startCol
-  occupiedByBlizzard (startRow, North) = (y - turn) `mod` vMod == startRow
-  occupiedByBlizzard (startRow, South) = (y + turn) `mod` vMod == startRow
+  occupiedByBlizzard (startCol, East) = x == ((startCol - 1 + turn) `mod` hMod) + 1
+  occupiedByBlizzard (startCol, West) = x == ((startCol - 1 - turn) `mod` hMod) + 1
+  occupiedByBlizzard (startRow, North) = y == ((startRow -1 + turn) `mod` vMod) + 1
+  occupiedByBlizzard (startRow, South) = y == ((startRow -1 - turn) `mod` vMod) + 1
   in any occupiedByBlizzard $ horizontals ++ verticals
+
+solvePart2Pure :: [String] -> (Int, Int, Int, Int)
+solvePart2Pure strs = let
+  bMap = parseGrid2 strs
+  BlizzardMap2 (minX, minY) (maxX, maxY) _ _ = bMap
+  goalCoords = (maxX - 1, minY)
+  firstDist = snd $ fromJust $ shortestPath bMap (startNode bMap) (isGoalNode bMap)
+  startCoords = fst $ startNode bMap
+  isStartCoords (coords, turn) = coords == startCoords
+  secondDist = snd $ fromJust $ shortestPath bMap (goalCoords, firstDist) isStartCoords
+  thirdStartTime = firstDist + secondDist
+  thirdDist = snd $ fromJust $ shortestPath bMap (startCoords, thirdStartTime) (isGoalNode bMap)
+  in (firstDist, secondDist, thirdDist, firstDist+secondDist+thirdDist)
+
+solvePart2 = do
+  text <- readFile "data/input24.txt"
+  return $ solvePart2Pure $ lines text
