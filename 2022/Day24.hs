@@ -1,7 +1,8 @@
 module Day24 where
 
+import Data.Array (array, Array, (!))
 import Data.List (partition)
-import Data.Map (Map, (!))
+import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Maybe (fromJust)
 import Data.Set (Set)
@@ -61,16 +62,16 @@ availableMoves bMap ((x, y), turn) = let
     allMoves :: [Coords]
     allMoves = [ (x + 1, y), (x, (y - 1)), (x - 1, y), (x, y),
                  (x, (y + 1))]
-    unoccupied :: Coords -> Bool
-    unoccupied (q, r) = not $ hasBlizzard bMap (q,r) (turn + 1)
-    emptySpaces1 :: [Coords]
-    emptySpaces1 = filter unoccupied allMoves
     inBounds :: Coords -> Bool
     inBounds (x, y) = x > minX && x < maxX && y > minY && y < maxY
     allowed :: Coords -> Bool
     allowed (x, y) = (x,y) == fst (startNode bMap) || isGoal (minX, minY) (maxX, maxY) (x, y) || inBounds (x, y)
+    unoccupied :: Coords -> Bool
+    unoccupied (q, r) = not $ hasBlizzard bMap (q,r) (turn + 1)
+    emptySpaces1 :: [Coords]
+    emptySpaces1 = filter unoccupied $ filter allowed allMoves
     emptySpaces2 = filter allowed emptySpaces1
-    in zip emptySpaces2 $ repeat (turn + 1)
+    in zip emptySpaces1 $ repeat (turn + 1)
 
 type Node = (Coords, Int)
 findNeighbors :: BlizzardMap2 -> Node -> [Node]
@@ -107,34 +108,38 @@ type Blizzard2 = (Int, Direction)
 data BlizzardMap2 = BlizzardMap2 {
     getLowerLeft :: Coords
   , getUpperRight :: Coords
-  , getHorizontalBlizzards :: Map Int [Blizzard2]
-  , getVerticalBlizzards :: Map Int [Blizzard2]
+  , getHorizontalBlizzards :: Array Int [Blizzard2]
+  , getVerticalBlizzards :: Array Int [Blizzard2]
 } deriving (Eq, Ord, Show)
 
 parseGrid2 :: [String] -> BlizzardMap2
 parseGrid2 strs = let
   (bl, tr, bSet) = parseGrid strs
+  (minX, minY) = bl
+  (maxX, maxY) = tr
   isHorizontal (_, d) = d == West || d == East
   (horizontals, verticals) = partition isHorizontal $ Set.toList bSet
   bToB2Horizontal :: (Coords, Direction) -> (Int, (Int, Direction))
   bToB2Horizontal ((x, y), d) = (y, (x, d))
   bToB2Vertical ((x, y), d) = (x, (y, d))
   insertIntoListMap :: Map Int [a] -> (Int, a) -> Map Int [a]
-  insertIntoListMap oldMap (key, value) = case Map.lookup key oldMap of
-    Nothing -> Map.insert key [value] oldMap
-    Just ls -> Map.insert key (value:ls) oldMap
+  insertIntoListMap oldMap (key, value) = Map.adjust (\l -> value:l) key oldMap
+  emptyHorizontalM = Map.fromList $ zip ([minY..maxY]) (repeat [])
   horizontalM :: Map Int [Blizzard2]
-  horizontalM = foldl insertIntoListMap Map.empty $ map bToB2Horizontal horizontals
+  horizontalM = foldl insertIntoListMap emptyHorizontalM $ map bToB2Horizontal horizontals
+  horizontalA = array (minY, maxY) $ Map.toList horizontalM
+  emptyVerticalM = Map.fromList $ zip ([minX..maxX]) (repeat [])
   verticalM :: Map Int [Blizzard2]
-  verticalM = foldl insertIntoListMap Map.empty $ map bToB2Vertical verticals
-  in BlizzardMap2 bl tr horizontalM verticalM
+  verticalM = foldl insertIntoListMap emptyVerticalM $ map bToB2Vertical verticals
+  verticalA = array (minX, maxX) $ Map.toList verticalM
+  in BlizzardMap2 bl tr horizontalA verticalA
 
 hasBlizzard :: BlizzardMap2 -> Coords -> Int -> Bool
 hasBlizzard bMap (x, y) turn = let
   BlizzardMap2 (minX, minY) (maxX, maxY) hMap vMap = bMap
   horizontals :: [Blizzard2]
-  horizontals = Map.findWithDefault [] y hMap
-  verticals = Map.findWithDefault [] x vMap
+  horizontals = hMap!y
+  verticals = vMap!x
   hMod = maxX - minX - 1
   vMod = maxY - minY - 1
   occupiedByBlizzard (startCol, East) = x == ((startCol - 1 + turn) `mod` hMod) + 1
