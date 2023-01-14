@@ -16,10 +16,14 @@ fn parse_multiline_string(one_big_string: &String) -> Vec<Vec<i64>> {
             output.push(current_elf);
             current_elf = vec![];
         } else {
-            let intval = mystr.parse::<i64>().unwrap();
+            let intval = match mystr.parse::<i64>() {
+                Ok(actual_int) => actual_int,
+                Err(why) => panic!("failed parsing {} because {}", mystr, why),
+            };
             current_elf.push(intval);
         }
     }
+    output.push(current_elf);
     output
 }
 
@@ -50,7 +54,27 @@ fn solve_part_2(elves: &Vec<Vec<i64>>) -> i64 {
 }
 
 fn main() {
-    let elves = parse_file("../data/input01.txt");
+    let test_input = String::from(
+        "1000
+2000
+3000
+
+4000
+
+5000
+6000
+
+7000
+8000
+9000
+
+10000",
+    );
+
+    let mut elves = parse_multiline_string(&test_input); //file("../data/input01.txt");
+    println!("Part 1 test solution: {}", max_weight_of_one_elf(&elves));
+    println!("Part 2 test solution: {}", solve_part_2(&elves));
+    elves = parse_file("../data/input01.txt");
     println!("Part 1 solution: {}", max_weight_of_one_elf(&elves));
     println!("Part 2 solution: {}", solve_part_2(&elves));
 }
