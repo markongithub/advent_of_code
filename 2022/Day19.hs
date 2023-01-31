@@ -70,112 +70,31 @@ testBlueprint2 = Map.fromList [
 spaces :: Int -> String
 spaces depth = take (15 - depth) (repeat ' ')
 
-evaluate :: Blueprint -> Int -> State -> Int -> ([State], Int)
-evaluate bp depth state best = let
+evaluate :: Blueprint -> Int -> Int -> State -> Int -> ([State], Int)
+evaluate bp maxTime depth state best = let
   State _ _ geodes time = state -- trace (spaces depth ++ show (depth, best, state)) state
-  bailOut = maxGeodes2 bp state <= best
+  bailOut = maxGeodes2 bp maxTime state <= best
   options :: [State]
-  options = availableOptions bp state
+  options = availableOptions bp maxTime state
   options2 :: [State]
   options2 = if (null options) then error "null options" else options
   maxBySnd (a, x) (b, y) = if x > y then (a, x) else (b, y)
   foldEval :: ([State], Int) -> State -> ([State], Int)
-  foldEval oldBest s = maxBySnd oldBest (evaluate bp (depth - 1) s (snd oldBest)) 
+  foldEval oldBest s = maxBySnd oldBest (evaluate bp maxTime (depth - 1) s (snd oldBest)) 
   (recurse1, recurse2) = foldl foldEval ([], best) options2
   tooLate = if (depth <= 0) then True else False
-  in if (tooLate || time >= 25) || bailOut
+  in if (tooLate || time >= (maxTime + 1)) || bailOut
     then ([state], geodes)
     else (state:recurse1, recurse2)
 
-evalToEnd :: Blueprint -> State -> ([State], Int)
-evalToEnd bp state = let
-  timeLeft = 26 - getCurMinute state
-  in evaluate bp timeLeft state 0
+evalToEnd :: Blueprint -> Int -> State -> ([State], Int)
+evalToEnd bp maxTime state = let
+  timeLeft = (maxTime + 2) - getCurMinute state
+  in evaluate bp maxTime timeLeft state 0
 
 -- foldl :: Foldable t => (b -> a -> b) -> b -> t a -> b
 -- evalFold best state best
 
-type Node = State
-type Distance = Int
-type NodeQueue = Set (Distance, Node)
-type Distances = Map Node (Distance, Node)
-type TargetFunc = Node -> Bool
-
-findNeighbors :: Blueprint -> Node -> [Node]
-findNeighbors bp = availableOptions bp
-
-updateDistance :: (Distances, NodeQueue) -> (Node, Distance, Node) -> (Distances, NodeQueue)
-updateDistance (ds, q) (n, dist, prev) = let
-  better = Map.notMember n ds || dist < (fst $ lookupOrError n ds "updateDistance")
-  in case better of
-    True -> (Map.insert n (dist, prev) ds, Set.insert (dist, n) q)
-    False -> (ds, q)
-
-lookupOrError :: (Ord k, Show k) => k -> Map k a -> String -> a
-lookupOrError k m errorStr = case Map.lookup k m of
-  Nothing -> error (errorStr ++ " (key was " ++ show k ++ ")")
-  Just a -> a
-
-dijkstra0 :: Blueprint -> Distances -> Set Node -> Set (Int, Node) -> Node -> TargetFunc -> Maybe Distances
-dijkstra0 blueprint distances visited queue current destination = let
-  currentDistance = fst $ lookupOrError current distances "distances!current"
-  neighborsD = findNeighbors blueprint current
-  neighbors = neighborsD -- if null neighborsD then error ("no neighbors from " ++ show current) else neighborsD
-  neighborDistances :: [Int]
-  neighborDistances = map (\n -> currentDistance + getCurMinute n - getCurMinute current) neighbors
-  neighborsWithDists = zip3 neighbors neighborDistances (repeat current)
-  (newDistances, newQueue) = foldl updateDistance (distances, queue) neighborsWithDists -- if (null neighborsWithDists) then error "neighborsWithDists is empty" else foldl updateDistance (distances, queue) neighborsWithDists
-  newVisited = Set.insert current visited
-  newCurrent = snd $ Set.findMin newQueue
-  finalQueue = Set.deleteMin newQueue
-  recurse = dijkstra0 blueprint newDistances newVisited finalQueue newCurrent destination
-  in if destination current
-        then Just distances
-        else if Set.null newQueue
-               then Nothing
-               else recurse
-
-dijkstra :: Blueprint -> Node -> TargetFunc -> Maybe Distances
-dijkstra blueprint source destination = let
-  initialDistances = Map.singleton source (0, undefined)
-  initialVisited = Set.empty
-  initialQueue = Set.empty
-  in dijkstra0 blueprint initialDistances initialVisited initialQueue source destination
-
-traceBack :: Distances -> Node -> Node -> [Node] -> [Node]
-traceBack ds source destination accu = let
-  (_, next) = lookupOrError destination ds "ds!destination"
-  newAccu = next:accu
-  in if source == destination then accu else traceBack ds source next newAccu
-
-shortestPath :: Blueprint -> Node -> TargetFunc -> Maybe ([Node], Distance)
-shortestPath blueprint source destination = let
-  dijkstraOutput = dijkstra blueprint source destination
-  candidates :: Distances -> [Node]
-  candidates paths = filter destination $ Map.keys paths
-  lookupDist paths n = fst $ paths!n
-  destNode paths = head $ sortOn (lookupDist paths) $ candidates paths
-  fullLength paths = fst $ lookupOrError (destNode paths) paths "paths!destination"
-  path paths = traceBack paths source (destNode paths) []
-  in case dijkstraOutput of
-    Just paths -> Just (path paths, fullLength paths)
-    Nothing -> Nothing
-
-findNode :: Blueprint -> Node -> TargetFunc -> Node
-findNode blueprint source destination = let
-  dijkstraOutput = dijkstra blueprint source destination
-  candidates :: Distances -> [Node]
-  candidates paths = filter destination $ Map.keys paths
-  lookupDist paths n = fst $ paths!n
-  destNode paths = head $ sortOn (lookupDist paths) $ candidates paths
-  finalPaths = fromJust dijkstraOutput
-  in destNode finalPaths
-
-hasGeodeBot :: TargetFunc
-hasGeodeBot (State _ _ geodes _) = geodes > 0
-
-shortestPathToGeode :: Blueprint -> Node -> ([Node], Distance)
-shortestPathToGeode blueprint state = fromJust $ shortestPath blueprint state hasGeodeBot
 
 distanceToPrice :: Blueprint -> State -> Resource -> Maybe Int
 distanceToPrice blueprint (State robots inventory _ _) res = let
@@ -189,12 +108,12 @@ distanceToPrice blueprint (State robots inventory _ _) res = let
   maximumTurns = max 0 (maximum $ map turnsToRes necessaryResources)
   in if haveAllRobots then Just maximumTurns else Nothing
 
-canBuildPrice :: Blueprint -> State -> Resource -> Bool
-canBuildPrice blueprint state res = let
+canBuildPrice :: Blueprint -> Int -> State -> Resource -> Bool
+canBuildPrice blueprint maxTime state res = let
   (State _ _ _ time) = state
   in case distanceToPrice blueprint state res of
     Nothing -> False
-    Just t -> time + t < 24
+    Just t -> time + t < maxTime
 
 waitAndBuyRobot :: Blueprint -> State -> Resource -> State
 waitAndBuyRobot blueprint state res = let
@@ -208,13 +127,13 @@ waitForEnd state = let
   timeLeft = 25 - time
   in head $ drop timeLeft $ iterate doMining state
 
-availableOptions :: Blueprint -> State -> [State]
-availableOptions blueprint oldState = let
-  thingsToBuy = filter (canBuildPrice blueprint oldState) $ [Geode, Obsidian, Clay, Ore]
+availableOptions :: Blueprint -> Int -> State -> [State]
+availableOptions blueprint maxTime oldState = let
+  thingsToBuy = filter (canBuildPrice blueprint maxTime oldState) $ [Geode, Obsidian, Clay, Ore]
   giveUp = waitForEnd oldState
   afterBuying = map (waitAndBuyRobot blueprint oldState) thingsToBuy
   -- in if getCurMinute oldState >= 25 then [] else giveUp:afterBuying
-  in if (getCurMinute oldState >= 25) -- || (maxGeodes2 blueprint oldState < 12)
+  in if (getCurMinute oldState >= (maxTime + 1)) -- || (maxGeodes2 blueprint oldState < 12)
     then []
     else if null afterBuying
       then [giveUp]
@@ -222,12 +141,6 @@ availableOptions blueprint oldState = let
 --      else if Set.member Geode thingsToBuy
 --        then [waitAndBuyRobot blueprint oldState Geode]
 --        else afterBuying
-
-obsidianThenGeo :: Blueprint -> State -> (State, State)
-obsidianThenGeo blueprint state1 = let
-  state2 = findNode blueprint state1 (\s -> Map.findWithDefault 0 Obsidian (getRobots s) >0)
-  state3 = findNode blueprint state2 (\s -> getGeodes s >0)
-  in (state2, state3)
 
 testPath2 :: [Resource]
 testPath2 = [
@@ -296,27 +209,14 @@ minTimeToFirstRobot bp (State robots inv g t) targetRes sourceRes = let
   timeToGetIt = quadraticTime (Map.findWithDefault 0 sourceRes robots) needed
   in if alreadyHaveIt then 0 else timeToGetIt
 
-maxGeodes :: State -> Int
-maxGeodes (State r i g t) = let
-  geodeBotsICouldStillBuild = 24 - t
-  in g + ((geodeBotsICouldStillBuild * (geodeBotsICouldStillBuild + 1)) `div` 2)
-
-maxGeodes2 :: Blueprint -> State -> Int
-maxGeodes2 bp state = let
+maxGeodes2 :: Blueprint -> Int -> State -> Int
+maxGeodes2 bp maxTime state = let
   (State r i g t) = state
   timeToClay = t + (minTimeToFirstRobot bp state Clay Ore)
   timeToObsidian = timeToClay + (minTimeToFirstRobot bp state Obsidian Clay)
   timeToGeode = timeToObsidian + (minTimeToFirstRobot bp state Geode Obsidian)
-  geodeBotsICouldStillBuild = max 0 (24 - timeToGeode)
+  geodeBotsICouldStillBuild = max 0 (maxTime - timeToGeode)
   in g + ((geodeBotsICouldStillBuild * (geodeBotsICouldStillBuild + 1)) `div` 2)
-
-evaluateSimple :: Blueprint -> Int
-evaluateSimple bp = snd $ evaluate bp (length testPath2 + 3) initialState 0
-
-qualityLevel :: (Int, Blueprint) -> Int
-qualityLevel (bpID, bp) = let
-  geodes = snd $ evalToEnd bp initialState
-  in bpID * geodes
 
 parseLine :: String -> (Int, Blueprint)
 parseLine str = let
@@ -358,13 +258,10 @@ parsePrice str = let
   resource = stringToResource resourceStr
   in (resource, value):(parsePrice remainder)
 
-parseAndGetQualityLevel :: String -> Int
-parseAndGetQualityLevel str = qualityLevel $ parseLine str
-
-parseAndDebugQualityLevel :: String -> (Int, Int)
-parseAndDebugQualityLevel str = let
+parseAndDebugQualityLevel :: Int -> String -> (Int, Int)
+parseAndDebugQualityLevel maxTime str = let
   (idNum, bp) = parseLine str
-  geodes = snd $ evalToEnd bp initialState
+  geodes = snd $ evalToEnd bp maxTime initialState
   in (idNum, geodes)
 
 testInput = [
@@ -374,7 +271,7 @@ testInput = [
 
 solvePart1Pure :: [String] -> ([(Int, Int)], Int)
 solvePart1Pure strs = let
-  debugs = map parseAndDebugQualityLevel strs
+  debugs = map (parseAndDebugQualityLevel 24) strs
   qualityLevels = map (\(x, y) -> x * y) debugs
   answer = sum qualityLevels
   in (debugs, answer)
@@ -386,6 +283,21 @@ solvePart1Pure strs = let
 solvePart1 = do
   text <- readFile "data/input19.txt"
   return $ solvePart1Pure $ lines text
+
+solvePart2Pure :: [String] -> ([(Int, Int)], Int)
+solvePart2Pure strs = let
+  debugs = map (parseAndDebugQualityLevel 32) (take 3 strs)
+  qualityLevels = map (\(x, y) -> x * y) debugs
+  answer = sum qualityLevels
+  in (debugs, answer)
+  -- in sum qualityLevels
+  -- return (sum qualityLevels)
+  -- output = map parseAndDebugQualityLevel strs
+  -- in output
+
+solvePart2 = do
+  text <- readFile "data/input19.txt"
+  return $ solvePart2Pure $ lines text
 
 buy2Ores = waitAndBuyRobot testBlueprint2 initialState Ore
 buy3Ores = waitAndBuyRobot testBlueprint2 buy2Ores Ore
@@ -406,13 +318,13 @@ applyPath bp rs = applyPath0 bp rs initialState
 -- 806 is my part 1 solution
 -- bptest2 does not get you to 10
 
-childrenWithScores :: Blueprint -> Int -> State -> Int -> [(State, Int)]
-childrenWithScores bp depth state best = let
+childrenWithScores :: Blueprint -> Int -> Int -> State -> Int -> [(State, Int)]
+childrenWithScores bp maxTime depth state best = let
   State _ _ geodes time = state -- trace (spaces depth ++ show (depth, state)) state
-  bailOut = maxGeodes2 bp state <= best
+  bailOut = maxGeodes2 bp maxTime state <= best
   options :: [State]
-  options = availableOptions bp state
+  options = availableOptions bp maxTime state
   options2 :: [State]
   options2 = if (null options) then error "null options" else options
-  pairWithScore s = (s, snd $ evaluate bp (depth - 1) s best)
+  pairWithScore s = (s, snd $ evaluate bp maxTime (depth - 1) s best)
   in map pairWithScore options2
