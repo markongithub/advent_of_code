@@ -36,15 +36,15 @@ canBuyRobot blueprint (State _ inventory _ _) robotType = let
   canAfford (res, q) = (Map.findWithDefault 0 res inventory) >= q
   in all canAfford $ Map.toList price
 
-buyRobot :: Blueprint -> State -> Resource -> State
-buyRobot blueprint state robotType = let
+buyRobot :: Blueprint -> Int -> State -> Resource -> State
+buyRobot blueprint maxTime state robotType = let
   (State robots inventory oldGeodes t) = state
   price = blueprint!robotType
   subtractRes :: Inventory -> (Resource, Int) -> Inventory
   subtractRes someInv (res, q) = Map.adjust (\stupid -> stupid - q) res someInv
   newInventory = foldl subtractRes inventory $ Map.toList price
   newGeodes :: Int
-  newGeodes = if (robotType == Geode) then (oldGeodes + 25 - t) else oldGeodes
+  newGeodes = if (robotType == Geode) then (oldGeodes + (maxTime + 1) - t) else oldGeodes
   newRobots :: Inventory
   newRobots = if (robotType == Geode) then robots else Map.insertWith (+) robotType 1 robots
   in State newRobots newInventory newGeodes t
@@ -67,8 +67,8 @@ testBlueprint2 = Map.fromList [
   , (Geode, Map.fromList [(Ore, 3), (Obsidian, 12)])
   ]
 
-spaces :: Int -> String
-spaces depth = take (15 - depth) (repeat ' ')
+spaces :: Int -> Int -> String
+spaces depth maxTime = take (maxTime - depth) (repeat ' ')
 
 evaluate :: Blueprint -> Int -> Int -> State -> Int -> ([State], Int)
 evaluate bp maxTime depth state best = let
@@ -92,10 +92,6 @@ evalToEnd bp maxTime state = let
   timeLeft = (maxTime + 2) - getCurMinute state
   in evaluate bp maxTime timeLeft state 0
 
--- foldl :: Foldable t => (b -> a -> b) -> b -> t a -> b
--- evalFold best state best
-
-
 distanceToPrice :: Blueprint -> State -> Resource -> Maybe Int
 distanceToPrice blueprint (State robots inventory _ _) res = let
   price = blueprint!res
@@ -115,23 +111,23 @@ canBuildPrice blueprint maxTime state res = let
     Nothing -> False
     Just t -> time + t < maxTime
 
-waitAndBuyRobot :: Blueprint -> State -> Resource -> State
-waitAndBuyRobot blueprint state res = let
+waitAndBuyRobot :: Blueprint -> Int -> State -> Resource -> State
+waitAndBuyRobot blueprint maxTime state res = let
   turnsToWait = fromJust $ distanceToPrice blueprint state res
   afterWaiting = head $ drop (turnsToWait + 1) $ iterate doMining state
-  in buyRobot blueprint afterWaiting res
+  in buyRobot blueprint maxTime afterWaiting res
 
-waitForEnd :: State -> State
-waitForEnd state = let
+waitForEnd :: Int -> State -> State
+waitForEnd maxTime state = let
   (State _ _ _ time) = state
-  timeLeft = 25 - time
+  timeLeft = maxTime + 1 - time
   in head $ drop timeLeft $ iterate doMining state
 
 availableOptions :: Blueprint -> Int -> State -> [State]
 availableOptions blueprint maxTime oldState = let
   thingsToBuy = filter (canBuildPrice blueprint maxTime oldState) $ [Geode, Obsidian, Clay, Ore]
-  giveUp = waitForEnd oldState
-  afterBuying = map (waitAndBuyRobot blueprint oldState) thingsToBuy
+  giveUp = waitForEnd maxTime oldState
+  afterBuying = map (waitAndBuyRobot blueprint maxTime oldState) thingsToBuy
   -- in if getCurMinute oldState >= 25 then [] else giveUp:afterBuying
   in if (getCurMinute oldState >= (maxTime + 1)) -- || (maxGeodes2 blueprint oldState < 12)
     then []
@@ -139,48 +135,8 @@ availableOptions blueprint maxTime oldState = let
       then [giveUp]
       else afterBuying
 --      else if Set.member Geode thingsToBuy
---        then [waitAndBuyRobot blueprint oldState Geode]
+--        then [waitAndBuyRobot blueprint maxTime oldState Geode]
 --        else afterBuying
-
-testPath2 :: [Resource]
-testPath2 = [
-    Clay --3 
-  ,  Clay --5
-  ,  Clay -- 7
-  ,  Obsidian --11 my paper example is here
-  ,  Clay --12
-  ,  Obsidian --15
-  ,  Geode --18
-  ,  Geode --21
-  ]
-
-after11 = applyPath testBlueprint $ take 4 testPath2
-after12 = applyPath testBlueprint $ take 5 testPath2
-after18 = applyPath testBlueprint $ take 7 testPath2
-
-tiebreakers :: Ord b => [(a -> b)] -> a -> a -> Ordering
-tiebreakers [] s1 s2 = GT -- this is a cop-out
-tiebreakers (f:fs) s1 s2 = if (f s1) /= (f s2)
-                       then compare (f s1) (f s2)
-                       else tiebreakers fs s1 s2
-
-rankStates :: State -> State -> Ordering
-rankStates s1 s2 = let
-  countResource r s = Map.findWithDefault 0 r (getInventory s)
-  countBots :: Resource -> State -> Int
-  countBots r s = Map.findWithDefault 0 r (getRobots s)
-  funcs :: [(State -> Int)]
-  funcs = [
-      (\s -> -1 * getCurMinute s)
-    , getGeodes
-    , countBots Obsidian
-    , countResource Obsidian
-    , countBots Clay
-    , countResource Clay
-    , countBots Ore
-    , countResource Ore
-    ]
-  in tiebreakers funcs s1 s2
 
 distanceFromEachResource :: Blueprint -> State -> Resource -> [(Resource, Maybe Int)]
 distanceFromEachResource blueprint (State robots inventory _ _) res = let
@@ -261,7 +217,7 @@ parsePrice str = let
 parseAndDebugQualityLevel :: Int -> String -> (Int, Int)
 parseAndDebugQualityLevel maxTime str = let
   (idNum, bp) = parseLine str
-  geodes = snd $ evalToEnd bp maxTime initialState
+  geodes = snd $ evaluateMemoSimple bp maxTime
   in (idNum, geodes)
 
 testInput = [
@@ -287,8 +243,8 @@ solvePart1 = do
 solvePart2Pure :: [String] -> ([(Int, Int)], Int)
 solvePart2Pure strs = let
   debugs = map (parseAndDebugQualityLevel 32) (take 3 strs)
-  qualityLevels = map (\(x, y) -> x * y) debugs
-  answer = sum qualityLevels
+  geodeYields = map snd debugs
+  answer = product geodeYields
   in (debugs, answer)
   -- in sum qualityLevels
   -- return (sum qualityLevels)
@@ -299,32 +255,49 @@ solvePart2 = do
   text <- readFile "data/input19.txt"
   return $ solvePart2Pure $ lines text
 
-buy2Ores = waitAndBuyRobot testBlueprint2 initialState Ore
-buy3Ores = waitAndBuyRobot testBlueprint2 buy2Ores Ore
-thenClay = waitAndBuyRobot testBlueprint2 buy3Ores Clay
-thenAnotherClay = waitAndBuyRobot testBlueprint2 thenClay Clay
-thirdClay = waitAndBuyRobot testBlueprint2 thenAnotherClay Clay
-fourthClay = waitAndBuyRobot testBlueprint2 thirdClay Clay
+applyPath0 :: Blueprint -> Int -> [Resource] -> State -> State
+applyPath0 bp _ [] accu = accu
+applyPath0 bp maxTime (r:rs) accu = let
+  newAccu = waitAndBuyRobot bp maxTime accu r
+  in applyPath0 bp maxTime rs newAccu
 
-applyPath0 :: Blueprint -> [Resource] -> State -> State
-applyPath0 bp [] accu = accu
-applyPath0 bp (r:rs) accu = let
-  newAccu = waitAndBuyRobot bp accu r
-  in applyPath0 bp rs newAccu
+applyPath :: Blueprint -> Int -> [Resource] -> State
+applyPath bp maxTime rs = applyPath0 bp maxTime rs initialState
 
-applyPath :: Blueprint -> [Resource] -> State
-applyPath bp rs = applyPath0 bp rs initialState
+-- myEdgeFunc :: Blueprint -> Int -> OutgoingEdgeFunc State
+-- myEdgeFunc bp maxTime oldState = let
+--  options = availableOptions bp maxTime oldState
+--  geodeDiff newState = getGeodes oldState - getGeodes newState
+--  makeEdge newState = (oldState, newState, geodeDiff newState)
+--  in map makeEdge options
 
--- 806 is my part 1 solution
--- bptest2 does not get you to 10
+type StateCache = Map State Int
+debugDepth = 99
 
-childrenWithScores :: Blueprint -> Int -> Int -> State -> Int -> [(State, Int)]
-childrenWithScores bp maxTime depth state best = let
-  State _ _ geodes time = state -- trace (spaces depth ++ show (depth, state)) state
+evaluateMemo :: Blueprint -> Int -> Int -> Int -> StateCache -> State -> Int -> (StateCache, Int)
+evaluateMemo bp maxTime depth cacheDepthMinutes cache state best = let
+  State _ _ geodes time = if depth > debugDepth then (trace (spaces depth maxTime ++ show (depth, best, Map.size cache, state)) state) else state
   bailOut = maxGeodes2 bp maxTime state <= best
   options :: [State]
   options = availableOptions bp maxTime state
   options2 :: [State]
   options2 = if (null options) then error "null options" else options
-  pairWithScore s = (s, snd $ evaluate bp maxTime (depth - 1) s best)
-  in map pairWithScore options2
+  maxBySnd (a, x) (b, y) = if x > y then (a, x) else (b, y)
+  foldEval :: (StateCache, Int) -> State -> (StateCache, Int)
+  foldEval oldBest s = maxBySnd oldBest (evaluateMemo bp maxTime (depth - 1) cacheDepthMinutes (fst oldBest) s (snd oldBest)) 
+  (newCache, value) = foldl foldEval (cache, best) options2
+  finalCache = Map.insert state value newCache
+  tooLate = if (depth <= 0) then True else False
+  useCache = time <= cacheDepthMinutes
+  answerFromCache = cache!state
+  in if useCache && Map.member state cache
+    then (cache, answerFromCache)
+    else if (tooLate || time >= (maxTime + 1)) || bailOut
+      then (cache, geodes)
+      else (finalCache, value)
+
+evaluateMemoSimple :: Blueprint -> Int -> (StateCache, Int)
+evaluateMemoSimple bp maxTime = evaluateMemo bp maxTime maxTime 20 Map.empty initialState 0
+
+tryCacheDepth :: Int -> Int
+tryCacheDepth cacheDepth = snd $ evaluateMemo testBlueprint2 32 32 cacheDepth Map.empty initialState 0
