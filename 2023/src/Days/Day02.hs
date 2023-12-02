@@ -20,11 +20,31 @@ runDay :: R.Day
 runDay = R.runDay inputParser partA partB
 
 ------------ PARSER ------------
+
+-- Game 1: 3 blue, 4 red; 1 red, 2 green, 6 blue; 2 green
+cubeCountParser :: Parser (Int, String)
+cubeCountParser = do
+  many' space
+  countStr <- many1 digit
+  many' space
+  colorStr <- many1 anyChar
+  return (read countStr, colorStr)
+
+cubeSetParser :: Parser [(Int, String)]
+cubeSetParser = cubeCountParser `sepBy` char ','
+
+gameParser :: Parser Game
+gameParser = cubeSetParser `sepBy` char ';'
+
 inputParser :: Parser Input
-inputParser = error "Not implemented yet!"
+inputParser = gameParser `sepBy` endOfLine
 
 ------------ TYPES ------------
-type Input = Void
+
+type CubeCount = (Int, String)
+type CubeSet = [CubeCount]
+type Game = [CubeSet]
+type Input = [Game]
 
 type OutputA = Void
 
