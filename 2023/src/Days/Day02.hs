@@ -1,6 +1,8 @@
 module Days.Day02 (runDay) where
 
 {- ORMOLU_DISABLE -}
+import Control.Applicative
+
 import Data.List
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
@@ -21,38 +23,72 @@ runDay = R.runDay inputParser partA partB
 
 ------------ PARSER ------------
 
+data Color = Red | Green | Blue deriving (Eq, Ord, Show)
+
+colorParser :: Parser Color
+colorParser =
+     (string "red"   >> return Red)
+ <|> (string "green" >> return Green)
+ <|> (string "blue"  >> return Blue)
+
 -- Game 1: 3 blue, 4 red; 1 red, 2 green, 6 blue; 2 green
-cubeCountParser :: Parser (Int, String)
+cubeCountParser :: Parser (Int, Color)
 cubeCountParser = do
   many' space
   countStr <- many1 digit
   many' space
-  colorStr <- many1 anyChar
-  return (read countStr, colorStr)
+  color <- colorParser
+  return (read countStr, color)
 
-cubeSetParser :: Parser [(Int, String)]
+cubeSetParser :: Parser [(Int, Color)]
 cubeSetParser = cubeCountParser `sepBy` char ','
 
 gameParser :: Parser Game
-gameParser = cubeSetParser `sepBy` char ';'
+gameParser = do
+  string "Game "
+  many1 digit
+  string ": "
+  cubeSetParser `sepBy` char ';'
 
 inputParser :: Parser Input
 inputParser = gameParser `sepBy` endOfLine
 
 ------------ TYPES ------------
 
-type CubeCount = (Int, String)
+type CubeCount = (Int, Color)
 type CubeSet = [CubeCount]
 type Game = [CubeSet]
 type Input = [Game]
 
-type OutputA = Void
+type OutputA = Int
 
 type OutputB = Void
 
 ------------ PART A ------------
+
+type ColorCount = Map Color Int
+
+updateColorCount :: ColorCount -> CubeCount -> ColorCount
+updateColorCount oldMap (count, color) = let
+  oldValue = Map.findWithDefault 0 color oldMap
+  in Map.insert color (max oldValue count) oldMap
+
+colorCountForGame :: Game -> ColorCount
+colorCountForGame game = let
+  allCounts :: [CubeCount]
+  allCounts = concat game
+  in foldl updateColorCount Map.empty allCounts
+
+gameQualifies :: Game -> Bool
+gameQualifies game = let
+  colorCount = colorCountForGame game
+  in ((Map.findWithDefault 0 Red colorCount <= 12) &&
+      (Map.findWithDefault 0 Green colorCount <= 13) &&
+      (Map.findWithDefault 0 Blue colorCount <= 14))
+
 partA :: Input -> OutputA
-partA = error "Not implemented yet!"
+partA input = length $ filter gameQualifies input
+  
 
 ------------ PART B ------------
 partB :: Input -> OutputB
