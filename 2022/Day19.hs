@@ -217,7 +217,7 @@ parsePrice str = let
 parseAndDebugQualityLevel :: Int -> String -> (Int, Int)
 parseAndDebugQualityLevel maxTime str = let
   (idNum, bp) = parseLine str
-  geodes = snd $ evaluateMemoSimple bp maxTime
+  geodes = graphExplore bp maxTime
   in (idNum, geodes)
 
 testInput = [
@@ -301,3 +301,27 @@ evaluateMemoSimple bp maxTime = evaluateMemo bp maxTime maxTime 20 Map.empty ini
 
 tryCacheDepth :: Int -> Int
 tryCacheDepth cacheDepth = snd $ evaluateMemo testBlueprint2 32 32 cacheDepth Map.empty initialState 0
+
+type PriorityQueue = Set (Int, State)
+
+graphExplore0 :: Blueprint -> Int -> PriorityQueue -> Int -> Int
+graphExplore0 bp maxTime queue best = let
+  ((newGeodes, state), queue2) = Set.deleteFindMax queue
+  State _ _ geodes time = state
+  prune = time > maxTime || maxGeodes2 bp maxTime state <= best
+  options :: [State]
+  options = availableOptions bp maxTime state
+  options2 :: [State]
+  options2 = if (null options) then error "null options" else options
+  optionsWithPriority = zip (map getGeodes options2) options2
+  queue3 = foldr Set.insert queue2 optionsWithPriority
+  newBest = max best newGeodes
+  nextQueue = if prune then queue2 else queue3
+  recurse = graphExplore0 bp maxTime nextQueue newBest
+  in if Set.null queue
+    then best
+    else recurse
+
+graphExplore bp maxTime = let
+  initialQueue = Set.singleton (0, initialState)
+  in graphExplore0 bp maxTime initialQueue 0
