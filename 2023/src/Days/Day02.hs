@@ -46,9 +46,10 @@ cubeSetParser = cubeCountParser `sepBy` char ','
 gameParser :: Parser Game
 gameParser = do
   string "Game "
-  many1 digit
+  gameNumStr <- many1 digit
   string ": "
-  cubeSetParser `sepBy` char ';'
+  gameData <- cubeSetParser `sepBy` char ';'
+  return (read gameNumStr, gameData)
 
 inputParser :: Parser Input
 inputParser = gameParser `sepBy` endOfLine
@@ -57,7 +58,7 @@ inputParser = gameParser `sepBy` endOfLine
 
 type CubeCount = (Int, Color)
 type CubeSet = [CubeCount]
-type Game = [CubeSet]
+type Game = (Int, [CubeSet])
 type Input = [Game]
 
 type OutputA = Int
@@ -74,9 +75,9 @@ updateColorCount oldMap (count, color) = let
   in Map.insert color (max oldValue count) oldMap
 
 colorCountForGame :: Game -> ColorCount
-colorCountForGame game = let
+colorCountForGame (_, cubes) = let
   allCounts :: [CubeCount]
-  allCounts = concat game
+  allCounts = concat cubes
   in foldl updateColorCount Map.empty allCounts
 
 gameQualifies :: Game -> Bool
@@ -87,7 +88,7 @@ gameQualifies game = let
       (Map.findWithDefault 0 Blue colorCount <= 14))
 
 partA :: Input -> OutputA
-partA input = length $ filter gameQualifies input
+partA input = sum $ map fst $ filter gameQualifies input
   
 
 ------------ PART B ------------
