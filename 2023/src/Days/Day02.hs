@@ -63,7 +63,7 @@ type Input = [Game]
 
 type OutputA = Int
 
-type OutputB = Void
+type OutputB = Int
 
 ------------ PART A ------------
 
@@ -92,5 +92,11 @@ partA input = sum $ map fst $ filter gameQualifies input
   
 
 ------------ PART B ------------
+
+powerForGame :: Game -> Int
+powerForGame game = let
+  colorCount = colorCountForGame game
+  in product $ Map.elems colorCount
+
 partB :: Input -> OutputB
-partB = error "Not implemented yet!"
+partB input = sum $ map powerForGame input
