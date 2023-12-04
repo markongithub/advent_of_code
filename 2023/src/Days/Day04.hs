@@ -20,19 +20,52 @@ runDay :: R.Day
 runDay = R.runDay inputParser partA partB
 
 ------------ PARSER ------------
+numberParser :: Parser Int
+numberParser = do
+  many' (char ' ')
+  numStr <- many1 digit
+  many' (char ' ')
+  return (read numStr)
+
+numbersParser :: Parser [Int]
+numbersParser = many1 numberParser
+
+cardParser :: Parser Card
+cardParser = do
+  string "Card"
+  many1 (char ' ')
+  cardNumStr <- many1 digit
+  string ": "
+  winningNumbers <- numbersParser
+  char '|'
+  myNumbers <- numbersParser
+  return (read cardNumStr, winningNumbers, myNumbers)
+
 inputParser :: Parser Input
-inputParser = error "Not implemented yet!"
+inputParser = cardParser `sepBy` endOfLine
 
 ------------ TYPES ------------
-type Input = Void
+type Card = (Int, [Int], [Int])
+type Input = [Card]
 
-type OutputA = Void
+type OutputA = Int
 
 type OutputB = Void
 
 ------------ PART A ------------
+
+matches :: Card -> [Int]
+matches (_, winners, mine) = let
+  winnerSet = Set.fromList winners
+  in filter (\n -> Set.member n winnerSet) mine
+
+cardValue :: Card -> Int
+cardValue card = case (length $ matches card) of
+  0 -> 0
+  l -> 2 ^ (l - 1)
+
 partA :: Input -> OutputA
-partA = error "Not implemented yet!"
+partA cards = sum $ map cardValue cards
 
 ------------ PART B ------------
 partB :: Input -> OutputB
