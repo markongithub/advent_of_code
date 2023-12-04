@@ -50,7 +50,7 @@ type Input = [Card]
 
 type OutputA = Int
 
-type OutputB = Void
+type OutputB = Int
 
 ------------ PART A ------------
 
@@ -68,5 +68,31 @@ partA :: Input -> OutputA
 partA cards = sum $ map cardValue cards
 
 ------------ PART B ------------
+
+type Inventory = Map Int Int
+
+updateInventory :: Inventory -> [Int] -> Int -> Inventory
+updateInventory inventory newCards countOfEach = let
+  addSingleCard m card = Map.insertWith (+) card countOfEach m
+  in foldl addSingleCard inventory newCards
+
+initialInventory :: Input -> Inventory
+initialInventory cards = let
+  numbers = map (\(n, _, _) -> n) cards
+  keyVals = zip numbers (repeat 1)
+  in Map.fromList keyVals
+
+processCard :: Inventory -> Card -> Inventory
+processCard inventory card = let
+  (index, _, _) = card
+  countHeld :: Int
+  countHeld = Map.findWithDefault 0 index inventory
+  numWinners = length $ matches card
+  cardsWon = Data.List.take numWinners [(index + 1)..]
+  newInventory = updateInventory inventory cardsWon countHeld
+  in newInventory
+
 partB :: Input -> OutputB
-partB = error "Not implemented yet!"
+partB cards = let
+  finalCards = foldl processCard (initialInventory cards) cards
+  in sum $ Map.elems finalCards
