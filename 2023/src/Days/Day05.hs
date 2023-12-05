@@ -140,5 +140,6 @@ partB :: Input -> OutputB
 partB (seeds, rangeMaps)= let
   seedRanges = traceShow ("count of seeds before deduping: " ++ show (countSeeds seeds)) $ seedsToRanges seeds
   mSets = map makeMappingSet rangeMaps
-  debugMessage = show seedRanges ++ " are the seed ranges and " ++ (show $ map Set.size mSets) ++ " are the mapping set sizes"
+  seedsAfterDeduping = sum $ map (\(min1, max1) -> max1 + 1 - min1) seedRanges
+  debugMessage = show seedRanges ++ " are the seed ranges with " ++ show seedsAfterDeduping ++ " seeds after deduping and " ++ (show $ map Set.size mSets) ++ " are the mapping set sizes"
   in traceShow debugMessage $ minimum $ map (seedToLocation mSets) (expandSeeds seedRanges)
