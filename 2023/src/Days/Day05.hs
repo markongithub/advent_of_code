@@ -73,24 +73,29 @@ makeMappingSet (_, ranges) = let
   putSourceFirst (dest, source, size) = (source, dest, size)
   in Set.fromList $ map putSourceFirst ranges
 
-findDestination :: MappingSet -> Int -> Int
-findDestination mSet source = let
+findDestination :: MappingSet -> Int -> Int -> (Int, Int)
+findDestination mSet source skippable = let
   lookupKey = (source, maxBound, maxBound)
-  (start, destStart, size) = case (Set.lookupLT lookupKey mSet) of
-    Nothing -> (0, 0, 0)
-    Just result -> result
-  in if source > (start + size - 1) then source else (destStart + source - start)
+  fst3 (x, _, _) = x
+  handleBelowMin = (source, ((fst3 (Set.findMin mSet)) - source))
+  handleResult start destStart size = if source > (start + size - 1) then handleAboveMax else ((destStart + source - start), (start + size - source))
+  handleAboveMax = case (Set.lookupGT lookupKey mSet) of
+    Nothing -> (source, skippable)
+    Just (start, destStart, size) -> (source, min skippable (start - source))
+  in case (Set.lookupLT lookupKey mSet) of
+    Nothing -> handleBelowMin
+    Just (start, destStart, size) -> handleResult start destStart size
 
-seedToLocation :: [MappingSet] -> Int -> Int
-seedToLocation [] location = location
-seedToLocation (x:xs) curValue = let
-  nextStep = findDestination x curValue
-  in seedToLocation xs nextStep
+seedToLocation :: [MappingSet] -> Int -> Int -> (Int, Int)
+seedToLocation [] location skippable = (location, skippable)
+seedToLocation (x:xs) curValue skippable = let
+  (nextStep, otherSkippable) = findDestination x curValue skippable
+  in seedToLocation xs nextStep (min skippable otherSkippable)
 
 partA :: Input -> OutputA
 partA (seeds, rangeMaps)= let
   mSets = map makeMappingSet rangeMaps
-  in minimum $ map (seedToLocation mSets) seeds
+  in minimum $ map (fst . (\s -> seedToLocation mSets s 0)) seeds
 
 ------------ PART B ------------
 
@@ -113,20 +118,13 @@ seedsToRanges0 []  = []
 seedsToRanges0 [x] = error "why was there an odd number of numbers"
 seedsToRanges0 (x:(y:xs)) = (x, x + y - 1):(seedsToRanges0 xs)
 
-expandSeeds :: [(Int, Int)] -> [Int]
-expandSeeds []  = []
-expandSeeds ((min1, max1):xs) = [min1..max1] ++ expandSeeds xs
-
--- expandSeeds :: [Int] -> [Int]
--- expandSeeds xs = Set.toList $ expandSeeds0 xs Set.empty
-
--- expandSeeds0 :: [Int] -> Set Int -> Set Int
--- expandSeeds0 [] accu = accu
--- expandSeeds0 [x] _ = error "why was there an odd number of numbers"
--- expandSeeds0 (x:(y:xs)) accu = let
---   newSeeds = traceShow ("accu size is " ++ show (Set.size accu) ++ " and I am about to insert " ++ show y) $ Data.List.take y [x..]
---   newAccu = foldl (flip Set.insert) accu newSeeds
---   in expandSeeds0 xs newAccu
+minimumByRange :: [MappingSet] -> (Int, Int) -> Int
+minimumByRange mSets (min1, max1) = let
+  debugMessage = "minimumByRange " ++ show (min1, max1)
+  (thisLocation, skippable) = seedToLocation mSets min1 maxBound
+  in case (min1 + skippable >= max1) of
+    True -> thisLocation
+    False -> min thisLocation (minimumByRange mSets (min1 + (max skippable 1), max1))
 
 countSeeds :: [Int] -> Int
 countSeeds [] = 0
@@ -140,6 +138,5 @@ partB :: Input -> OutputB
 partB (seeds, rangeMaps)= let
   seedRanges = traceShow ("count of seeds before deduping: " ++ show (countSeeds seeds)) $ seedsToRanges seeds
   mSets = map makeMappingSet rangeMaps
-  seedsAfterDeduping = sum $ map (\(min1, max1) -> max1 + 1 - min1) seedRanges
-  debugMessage = show seedRanges ++ " are the seed ranges with " ++ show seedsAfterDeduping ++ " seeds after deduping and " ++ (show $ map Set.size mSets) ++ " are the mapping set sizes"
-  in traceShow debugMessage $ minimum $ map (seedToLocation mSets) (expandSeeds seedRanges)
+  debugMessage = show seedRanges ++ " are the seed ranges with " ++ (show $ map Set.size mSets) ++ " as the mapping set sizes"
+  in traceShow debugMessage $ minimum $ map (minimumByRange mSets) seedRanges
