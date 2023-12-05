@@ -53,12 +53,6 @@ type OutputB = Int
 inputToRaces :: Input -> [Race]
 inputToRaces (times, distances) = zip times distances
 
-distanceTraveled :: Race -> Int -> Int
-distanceTraveled (time, _) pressTime = (time - pressTime) * pressTime
-
-canBreakRecord :: Race -> Int -> Bool
-canBreakRecord (time, distance) pressTime = distanceTraveled (time, undefined) pressTime > distance
-
 countRecordBreakingTimes :: Race -> Int
 countRecordBreakingTimes (time, distance) = let
   t = fromIntegral time
@@ -67,15 +61,6 @@ countRecordBreakingTimes (time, distance) = let
   maxTime =  floor $ (sqrt ((t * t) - (4 * d)) + t) / 2.0
   in 1 + maxTime - minTime
 
-recordBreakingTimes0 :: Race -> Int -> Bool -> [Int]
-recordBreakingTimes0 race currentGuess alreadyPeaked = let
-  currentAttempt = canBreakRecord race currentGuess
-  nextGuess = currentGuess + 1
-  in case (currentAttempt, alreadyPeaked) of
-    (True, _) -> (currentGuess:(recordBreakingTimes0 race nextGuess True))
-    (False, False) -> recordBreakingTimes0 race nextGuess False
-    (False, True) -> []
-
 partA :: Input -> OutputA
 partA input = let
   races = inputToRaces input
@@ -83,10 +68,11 @@ partA input = let
   in product countsByRace
 
 ------------ PART B ------------
+concatInts :: [Int] -> Int
+concatInts ints = read $ concat $ map show ints
+
 partB :: Input -> OutputB
 partB (times, distances) = let
-  oneBigTime :: Int
-  oneBigTime = read $ concat $ map show times
-  oneBigDistance :: Int
-  oneBigDistance = read $ concat $ map show distances
+  oneBigTime = concatInts times
+  oneBigDistance = concatInts distances
   in countRecordBreakingTimes (oneBigTime, oneBigDistance)
