@@ -20,19 +20,62 @@ runDay :: R.Day
 runDay = R.runDay inputParser partA partB
 
 ------------ PARSER ------------
+numberParser :: Parser Int
+numberParser = do
+  many' (char ' ')
+  numStr <- many1 digit
+  many' (char ' ')
+  return (read numStr)
+
+numbersParser :: Parser [Int]
+numbersParser = many1 numberParser
+
 inputParser :: Parser Input
-inputParser = error "Not implemented yet!"
+inputParser = do
+  string "Time: "
+  timeNums <- numbersParser
+  many' (char ' ')
+  endOfLine
+  string "Distance: "
+  distanceNums <- numbersParser
+  return (timeNums, distanceNums)
 
 ------------ TYPES ------------
-type Input = Void
+type Race = (Int, Int)
+type Input = ([Int], [Int])
 
-type OutputA = Void
+type OutputA = Int
 
-type OutputB = Void
+type OutputB = Int
 
 ------------ PART A ------------
+
+inputToRaces :: Input -> [Race]
+inputToRaces (times, distances) = zip times distances
+
+distanceTraveled :: Race -> Int -> Int
+distanceTraveled (time, _) pressTime = (time - pressTime) * pressTime
+
+canBreakRecord :: Race -> Int -> Bool
+canBreakRecord (time, distance) pressTime = distanceTraveled (time, undefined) pressTime > distance
+
+recordBreakingTimes :: Race -> [Int]
+recordBreakingTimes race = recordBreakingTimes0 race 1 False
+
+recordBreakingTimes0 :: Race -> Int -> Bool -> [Int]
+recordBreakingTimes0 race currentGuess alreadyPeaked = let
+  currentAttempt = canBreakRecord race currentGuess
+  nextGuess = currentGuess + 1
+  in case (currentAttempt, alreadyPeaked) of
+    (True, _) -> (currentGuess:(recordBreakingTimes0 race nextGuess True))
+    (False, False) -> recordBreakingTimes0 race nextGuess False
+    (False, True) -> []
+
 partA :: Input -> OutputA
-partA = error "Not implemented yet!"
+partA input = let
+  races = inputToRaces input
+  countsByRace = map (length . recordBreakingTimes) races
+  in product countsByRace
 
 ------------ PART B ------------
 partB :: Input -> OutputB
