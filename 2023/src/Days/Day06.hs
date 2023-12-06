@@ -59,8 +59,13 @@ distanceTraveled (time, _) pressTime = (time - pressTime) * pressTime
 canBreakRecord :: Race -> Int -> Bool
 canBreakRecord (time, distance) pressTime = distanceTraveled (time, undefined) pressTime > distance
 
-recordBreakingTimes :: Race -> [Int]
-recordBreakingTimes race = recordBreakingTimes0 race 1 False
+countRecordBreakingTimes :: Race -> Int
+countRecordBreakingTimes (time, distance) = let
+  t = fromIntegral time
+  d = fromIntegral distance
+  minTime = ceiling $ (sqrt ((t * t) - (4 * d)) - t) / (-2.0)
+  maxTime =  floor $ (sqrt ((t * t) - (4 * d)) + t) / 2.0
+  in 1 + maxTime - minTime
 
 recordBreakingTimes0 :: Race -> Int -> Bool -> [Int]
 recordBreakingTimes0 race currentGuess alreadyPeaked = let
@@ -74,9 +79,14 @@ recordBreakingTimes0 race currentGuess alreadyPeaked = let
 partA :: Input -> OutputA
 partA input = let
   races = inputToRaces input
-  countsByRace = map (length . recordBreakingTimes) races
+  countsByRace = map countRecordBreakingTimes races
   in product countsByRace
 
 ------------ PART B ------------
 partB :: Input -> OutputB
-partB = error "Not implemented yet!"
+partB (times, distances) = let
+  oneBigTime :: Int
+  oneBigTime = read $ concat $ map show times
+  oneBigDistance :: Int
+  oneBigDistance = read $ concat $ map show distances
+  in countRecordBreakingTimes (oneBigTime, oneBigDistance)
