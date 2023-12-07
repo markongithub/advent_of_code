@@ -66,15 +66,20 @@ type Input = ([SchematicNumber], [Symbol])
 
 type OutputA = Int
 
-type OutputB = Void
+type OutputB = Int
 
 ------------ PART A ------------
 
-isNearCoords :: Coords -> SchematicNumber -> Bool
-isNearCoords  (x1, y1) (s, (x2, y2)) = let
+coordsAroundNumber :: SchematicNumber -> [Coords]
+coordsAroundNumber (s, (x2, y2)) = let
   xRange = [(x2 - 1)..(x2 + length s)]
   yRange = [y2 - 1, y2, y2+1]
   allCandidates = [ (x,y) | x<-xRange, y<-yRange ]
+  in allCandidates
+
+isNearCoords :: Coords -> SchematicNumber -> Bool
+isNearCoords  (x1, y1) (s, (x2, y2)) = let
+  allCandidates = coordsAroundNumber (s, (x2, y2))
   in elem (x1, y1) allCandidates
 
 isNearSymbol :: [Symbol] -> SchematicNumber -> Bool
@@ -88,5 +93,26 @@ partA (numbers, symbols) = let
   in sum $ map (read . fst) partNumbers
 
 ------------ PART B ------------
+
+type CoordsToNumbers = Map Coords [String]
+insertNumber :: CoordsToNumbers -> SchematicNumber -> CoordsToNumbers
+insertNumber oldMap (str, coords) = let
+  allCoords = coordsAroundNumber (str, coords)
+  insertOne :: CoordsToNumbers -> Coords -> CoordsToNumbers
+  insertOne m c = Map.insertWith (++) c [str] m
+  in foldl insertOne oldMap allCoords
+
+makeNumberMap :: [SchematicNumber] -> CoordsToNumbers
+makeNumberMap numbers = foldl insertNumber Map.empty numbers
+
+numbersNearCoords :: CoordsToNumbers -> Coords -> [Int]
+numbersNearCoords cMap c = map read $ Map.findWithDefault [] c cMap
+
 partB :: Input -> OutputB
-partB = error "Not implemented yet!"
+partB (numbers, symbols) = let
+  gearCoords = map snd $ filter (\s -> fst s == '*') symbols
+  numberMap = makeNumberMap numbers
+  numbersByGear = map (numbersNearCoords numberMap) gearCoords
+  realGears :: [[Int]]
+  realGears = filter (\l -> length l == 2) numbersByGear
+  in sum $ map product realGears
