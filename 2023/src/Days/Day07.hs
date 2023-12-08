@@ -84,12 +84,15 @@ compareHands isPart2 h1 h2 = let
   v2 = valueFunc h2
   in if v1 == v2 then breakTie isPart2 h1 h2 else compare v1 v2
 
-partA :: Input -> OutputA
-partA hands = let
-  sortedHands = sortBy (compareHands False) hands
+solveDay7 :: Bool -> Input -> Int
+solveDay7 isPart2 hands = let
+  sortedHands = sortBy (compareHands isPart2) hands
   handsWithRanks = zip [1..] sortedHands
   winnings (rank, (_, bid)) = rank * bid
   in sum $ map winnings handsWithRanks
+
+partA :: Input -> OutputA
+partA hands = solveDay7 False hands
 
 ------------ PART B ------------
 
@@ -103,8 +106,4 @@ handValue2 (cards, _) = let
   in maximum $ map handValue allTransformations
 
 partB :: Input -> OutputB
-partB hands = let
-  sortedHands = sortBy (compareHands True) hands
-  handsWithRanks = zip [1..] sortedHands
-  winnings (rank, (_, bid)) = rank * bid
-  in sum $ map winnings handsWithRanks
+partB hands = solveDay7 True hands
