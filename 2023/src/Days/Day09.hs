@@ -60,14 +60,15 @@ appendToAll0 ((x:xs):ys) v = let
 appendToAll :: [[Int]] -> [[Int]]
 appendToAll xs = appendToAll0 (reverse (map reverse xs)) 0
 
-interpolatedValue :: [Int] -> Int
-interpolatedValue list = let
-  recursed = recurseDifferences list
+interpolatedValue :: Bool -> [Int] -> Int
+interpolatedValue isPart2 list = let
+  recursed = if isPart2 then recurseDifferences (reverse list) else recurseDifferences list
   appended = appendToAll recursed
   in head $ last appended
 
 partA :: Input -> OutputA
-partA input = sum $ map interpolatedValue input
+partA input = sum $ map (interpolatedValue False) input
+
 ------------ PART B ------------
 partB :: Input -> OutputB
-partB = error "Not implemented yet!"
+partB input = sum $ map (interpolatedValue True) input
