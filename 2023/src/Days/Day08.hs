@@ -76,48 +76,12 @@ routeToZ g source (x:xs) = let
 stepsToZ :: Graph -> String -> String -> Int -> Int
 stepsToZ g source directions count = snd $ stepsToGoal3 g (== "ZZZ") source directions count
 
-funcIndex :: (a -> Bool) -> [a] -> Maybe (a, Int)
-funcIndex f ls = funcIndex0 f ls 0
-
-funcIndex0 :: (a -> Bool) -> [a] -> Int -> Maybe (a, Int)
-funcIndex0 f [] _ = Nothing
-funcIndex0 f (x:xs) count = if f x then Just (x, count) else funcIndex0 f xs (count + 1)
-
-stepsToGoal :: Graph -> (String -> Bool) -> String -> String -> Int -> (String, Int)
-stepsToGoal g f source directions count = let
-  addStep :: [String] -> Char -> [String]
-  addStep ls direction = (followDirection g (head ls) direction ):ls
-  allSteps = foldl addStep [source] directions
-  newCount = count + length directions
-  debugMessage = "after " ++ show newCount ++ " steps we are at " ++ show (head allSteps)
-  recurse = traceShow debugMessage $ stepsToGoal g f (head allSteps) directions (count + length directions)
-  in case funcIndex f (init allSteps) of
-    Just (winner, n) -> undefined -- (winner, count + (length directions) - n)
-    Nothing -> recurse
-
 partA :: Input -> OutputA
 partA (directions, nodes) = let
   graph = makeGraph nodes
   in stepsToZ graph "AAA" (concat $ repeat directions) 0
 
 ------------ PART B ------------
-
-followDirectionParallel :: Graph -> [String] -> Char -> [String]
-followDirectionParallel g sources dir = let
-  advance source = followDirection g source dir
-  in map advance sources
-
-stepsToZ2 :: Graph -> (String -> Bool) -> [String] -> String -> Int -> Int -> Int
-stepsToZ2 _ _ _ [] _ _ = error "Directions should never be empty"
-stepsToZ2 g termFunc sources (dir:ds) count debugPeriod = let
-  nextSources2 = followDirectionParallel g sources dir
-  debugMessage = "after " ++ show count ++ " steps we are at " ++ show sources
-  nextSources = if debugPeriod == 0 then traceShow debugMessage nextSources2 else nextSources2
-  nextDebug = undefined
-  recurse = stepsToZ2 g termFunc nextSources ds (count + 1)
-  in case (all termFunc sources) of
-    True -> count
-    False -> undefined
 
 stepsToGoal2 :: Graph -> (String -> Bool) -> String -> String -> Int -> (String, Int)
 stepsToGoal2 g f source directions count = let
@@ -159,4 +123,3 @@ partB (directions, nodes) = let
     loopLengths = map (\s -> findLoopLength graph s directions) sources
     multiple = foldl lcm 1 loopLengths
     in multiple
-
