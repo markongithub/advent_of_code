@@ -20,20 +20,54 @@ runDay :: R.Day
 runDay = R.runDay inputParser partA partB
 
 ------------ PARSER ------------
+intParserThatActuallyWorks :: Parser Int
+intParserThatActuallyWorks = do
+  digits <- many1 (satisfy $ inClass "01234566789-")
+  return $ read digits
+
 inputParser :: Parser Input
-inputParser = error "Not implemented yet!"
+inputParser = do
+  listOfLists <- (intParserThatActuallyWorks `sepBy` (char ' ')) `sepBy` endOfLine
+  -- yeah that's right I'm converting it to string and back because fuck this
+  return $ filter (not . null) listOfLists
 
 ------------ TYPES ------------
-type Input = Void
+type Input = [[Int]]
 
-type OutputA = Void
+type OutputA = Int
 
-type OutputB = Void
+type OutputB = Int
 
 ------------ PART A ------------
-partA :: Input -> OutputA
-partA = error "Not implemented yet!"
 
+differences :: [Int] -> [Int]
+differences [] = error "this should not happen"
+differences [x] = []
+differences (x:(y:ys)) = (y - x):(differences (y:ys))
+
+recurseDifferences :: [Int] -> [[Int]]
+recurseDifferences input = case (all (== 0) input) of
+   True -> [input]
+   False -> input:(recurseDifferences (differences input))
+
+appendToAll0 :: [[Int]] -> Int -> [[Int]]
+appendToAll0 [] _ = []
+appendToAll0 ([]:ys) _ = error "inner list is empty"
+appendToAll0 ((x:xs):ys) v = let
+  topList = (v + x):(x:xs)
+  in topList:(appendToAll0 ys (v + x))
+
+appendToAll :: [[Int]] -> [[Int]]
+appendToAll xs = appendToAll0 (reverse (map reverse xs)) 0
+
+interpolatedValue :: [Int] -> Int
+interpolatedValue list = let
+  recursed = recurseDifferences list
+  appended = appendToAll recursed
+  in head $ last appended
+
+partA :: Input -> OutputA
+partA input = sum $ map interpolatedValue input
 ------------ PART B ------------
 partB :: Input -> OutputB
 partB = error "Not implemented yet!"
