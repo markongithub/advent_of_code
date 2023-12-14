@@ -99,5 +99,26 @@ partA input = let
   in (sum allValues, allValues)
 
 ------------ PART B ------------
-partB :: Input -> OutputB
-partB = error "Not implemented yet!"
+cons :: [a] -> a -> [a]
+cons xs x = (x:xs)
+
+expandList :: String -> String
+expandList s = let
+  laterList = cons s '?'
+  laterLists = Data.List.take 4 $ repeat laterList
+  in s ++ (concat laterLists)
+
+expandInput (str, nums) = (expandList str, concat $ Data.List.take 5 $ repeat nums)
+
+cacheLookup :: (Ord k) => Map k a -> (k -> a) -> k -> (a, Map k a)
+cacheLookup cache func input = let
+  slowResult = func input
+  newCache = Map.insert input slowResult cache
+  in case Map.lookup input cache of
+    Just result -> (result, cache)
+    Nothing -> (slowResult, newCache)
+
+-- partB :: Input -> [Int] -- , OutputB)
+partB input = let
+  allValues = map (arrangements . expandInput) (Data.List.take 2 input)
+  in (3, head input, allValues) -- (allValues, sum allValues)
