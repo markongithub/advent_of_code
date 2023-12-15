@@ -77,16 +77,10 @@ horribleRecursion0 cs0 (n:ns) depth cache = let
   remainderAfterMatch = drop n cs
   shouldRecurseWithMatch = canMatchN cs n
   (recurseWithMatchNum, cache2) = if shouldRecurseWithMatch then horribleRecursion0 (drop 1 remainderAfterMatch) ns (depth + n + 1) cache else (0, cache)
-  recurseWithMatch = fst $ horribleRecursion0 (drop 1 remainderAfterMatch) ns (depth + n + 1) cache
-  recurseWithoutMatch = fst $ horribleRecursion0 (tail cs) (n:ns) (depth + 1) cache
   (recurseWithoutMatchNum, cache3) = if mustMatch then (0, cache2) else horribleRecursion0 (tail cs) (n:ns) (depth + 1) cache2
   mustMatch = (head cs) == '#'
-  outputNumber = case (canMatchN cs n, mustMatch) of
-    (True, True) -> recurseWithMatchNum + recurseWithoutMatchNum
-    (True, False) -> recurseWithMatchNum + recurseWithoutMatchNum
-    (False, True) -> recurseWithMatchNum + recurseWithoutMatchNum
-    (False, False) -> recurseWithMatchNum + recurseWithoutMatchNum
-  in (outputNumber, cache)
+  outputNumber = recurseWithMatchNum + recurseWithoutMatchNum
+  in (outputNumber, cache3)
 
 arrangements :: (String, [Int]) -> Int
 arrangements (str, nums) = horribleRecursion str nums
