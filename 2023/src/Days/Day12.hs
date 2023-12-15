@@ -64,17 +64,17 @@ canMatchN (x:xs) n = canBeBroken x && canMatchN xs (n-1)
 prependToListInReverse :: [a] -> [a] -> [a]
 prependToListInReverse dest [] = dest
 prependToListInReverse dest (x:xs) = prependToListInReverse (x:dest) xs
-horribleRecursion :: String -> [Int] -> [String]
-horribleRecursion cs ns = map reverse $ horribleRecursion0 cs ns []
+horribleRecursion :: String -> [Int] -> Int
+horribleRecursion cs ns = horribleRecursion0 cs ns []
 
-horribleRecursion0 :: String -> [Int] -> String -> [String]
-horribleRecursion0 [] [] accu = [accu]
+horribleRecursion0 :: String -> [Int] -> String -> Int
+horribleRecursion0 [] [] accu = 1
 horribleRecursion0 (x:xs) [] accu = case x of
-  '#' -> []
+  '#' -> 0
   _ -> horribleRecursion0 xs [] ('.':accu)
-horribleRecursion0 [] (x:xs) accu = []
+horribleRecursion0 [] (x:xs) accu = 0
 horribleRecursion0 cs0 (n:ns) accu = let
-  cs = traceShow ("horribleRecursion0 " ++ cs0 ++ show (n:ns) ++  accu) cs0
+  cs = cs0 -- traceShow ("horribleRecursion0 " ++ cs0 ++ show (n:ns) ++  accu) cs0
   remainderAfterMatch = drop n cs
   accuWithMatchBase = prependToListInReverse accu (replaceAll (Data.List.take n cs) '?' '#')
   accuWithMatch = case remainderAfterMatch of
@@ -86,12 +86,12 @@ horribleRecursion0 cs0 (n:ns) accu = let
   mustMatch = (head cs) == '#'
   in case (canMatchN cs n, mustMatch) of
     (True, True) -> recurseWithMatch
-    (True, False) -> recurseWithMatch ++ recurseWithoutMatch
-    (False, True) -> []
+    (True, False) -> recurseWithMatch + recurseWithoutMatch
+    (False, True) -> 0
     (False, False) -> recurseWithoutMatch
 
 arrangements :: (String, [Int]) -> Int
-arrangements (str, nums) = length $ horribleRecursion str nums
+arrangements (str, nums) = horribleRecursion str nums
 
 partA :: Input -> (OutputA, [Int])
 partA input = let
@@ -120,5 +120,5 @@ cacheLookup cache func input = let
 
 -- partB :: Input -> [Int] -- , OutputB)
 partB input = let
-  allValues = map (arrangements . expandInput) (Data.List.take 2 input)
-  in (3, head input, allValues) -- (allValues, sum allValues)
+  allValues = map (arrangements . expandInput) input
+  in (3, head input, allValues, sum allValues) -- (allValues, sum allValues)
