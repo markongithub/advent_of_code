@@ -82,10 +82,10 @@ horribleRecursion0 cs0 (n:ns) depth cache = let
   (recurseWithoutMatchNum, cache3) = if mustMatch then (0, cache2) else horribleRecursion0 (tail cs) (n:ns) (depth + 1) cache2
   mustMatch = (head cs) == '#'
   outputNumber = case (canMatchN cs n, mustMatch) of
-    (True, True) -> recurseWithMatchNum
+    (True, True) -> recurseWithMatchNum + recurseWithoutMatchNum
     (True, False) -> recurseWithMatchNum + recurseWithoutMatchNum
-    (False, True) -> 0
-    (False, False) -> recurseWithoutMatchNum
+    (False, True) -> recurseWithMatchNum + recurseWithoutMatchNum
+    (False, False) -> recurseWithMatchNum + recurseWithoutMatchNum
   in (outputNumber, cache)
 
 arrangements :: (String, [Int]) -> Int
