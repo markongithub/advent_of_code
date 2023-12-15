@@ -75,12 +75,14 @@ horribleRecursion0 [] (x:xs) _ cache = (0, cache)
 horribleRecursion0 cs0 (n:ns) depth cache = let
   cs = cs0 -- traceShow ("horribleRecursion0 " ++ cs0 ++ show (n:ns) ++  accu) cs0
   remainderAfterMatch = drop n cs
+  shouldRecurseWithMatch = canMatchN cs n
+  (recurseWithMatchNum, cache2) = if shouldRecurseWithMatch then horribleRecursion0 (drop 1 remainderAfterMatch) ns (depth + n + 1) cache else (0, cache)
   recurseWithMatch = fst $ horribleRecursion0 (drop 1 remainderAfterMatch) ns (depth + n + 1) cache
   recurseWithoutMatch = fst $ horribleRecursion0 (tail cs) (n:ns) (depth + 1) cache
   mustMatch = (head cs) == '#'
   outputNumber = case (canMatchN cs n, mustMatch) of
-    (True, True) -> recurseWithMatch
-    (True, False) -> recurseWithMatch + recurseWithoutMatch
+    (True, True) -> recurseWithMatchNum
+    (True, False) -> recurseWithMatchNum + recurseWithoutMatch
     (False, True) -> 0
     (False, False) -> recurseWithoutMatch
   in (outputNumber, cache)
