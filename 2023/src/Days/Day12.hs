@@ -61,28 +61,20 @@ canMatchN [] n = False
 canMatchN (x:xs) 0 = canBeWorking x
 canMatchN (x:xs) n = canBeBroken x && canMatchN xs (n-1)
 
-prependToListInReverse :: [a] -> [a] -> [a]
-prependToListInReverse dest [] = dest
-prependToListInReverse dest (x:xs) = prependToListInReverse (x:dest) xs
 horribleRecursion :: String -> [Int] -> Int
-horribleRecursion cs ns = horribleRecursion0 cs ns []
+horribleRecursion cs ns = horribleRecursion0 cs ns
 
-horribleRecursion0 :: String -> [Int] -> String -> Int
-horribleRecursion0 [] [] accu = 1
-horribleRecursion0 (x:xs) [] accu = case x of
+horribleRecursion0 :: String -> [Int] -> Int
+horribleRecursion0 [] [] = 1
+horribleRecursion0 (x:xs) [] = case x of
   '#' -> 0
-  _ -> horribleRecursion0 xs [] ('.':accu)
-horribleRecursion0 [] (x:xs) accu = 0
-horribleRecursion0 cs0 (n:ns) accu = let
+  _ -> horribleRecursion0 xs []
+horribleRecursion0 [] (x:xs) = 0
+horribleRecursion0 cs0 (n:ns) = let
   cs = cs0 -- traceShow ("horribleRecursion0 " ++ cs0 ++ show (n:ns) ++  accu) cs0
   remainderAfterMatch = drop n cs
-  accuWithMatchBase = prependToListInReverse accu (replaceAll (Data.List.take n cs) '?' '#')
-  accuWithMatch = case remainderAfterMatch of
-    [] -> accuWithMatchBase
-    _  -> '.':accuWithMatchBase
-  recurseWithMatch = horribleRecursion0 (drop 1 remainderAfterMatch) ns accuWithMatch
-  accuWithoutMatch = ('.':accu)
-  recurseWithoutMatch = horribleRecursion0 (tail cs) (n:ns) accuWithoutMatch
+  recurseWithMatch = horribleRecursion0 (drop 1 remainderAfterMatch) ns
+  recurseWithoutMatch = horribleRecursion0 (tail cs) (n:ns)
   mustMatch = (head cs) == '#'
   in case (canMatchN cs n, mustMatch) of
     (True, True) -> recurseWithMatch
