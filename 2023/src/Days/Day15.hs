@@ -1,6 +1,7 @@
 module Days.Day15 (runDay) where
 
 {- ORMOLU_DISABLE -}
+import Data.Char (ord)
 import Data.List
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
@@ -21,18 +22,32 @@ runDay = R.runDay inputParser partA partB
 
 ------------ PARSER ------------
 inputParser :: Parser Input
-inputParser = error "Not implemented yet!"
+inputParser = do
+  strs <- many1 (satisfy $ notInClass ",\n") `sepBy` char ','
+  return strs
 
 ------------ TYPES ------------
-type Input = Void
+type Input = [String]
 
-type OutputA = Void
+type OutputA = Int
 
-type OutputB = Void
+type OutputB = Int
 
 ------------ PART A ------------
+
+updateHash :: Int -> Char -> Int
+updateHash val0 chr = let
+  asciiVal = ord chr
+  val1 = val0 + asciiVal
+  val2 = val1 * 17
+  val3 = val2 `mod` 256
+  in val3
+
+hash :: String -> Int
+hash str = foldl updateHash 0 str
+
 partA :: Input -> OutputA
-partA = error "Not implemented yet!"
+partA input = sum $ map hash input
 
 ------------ PART B ------------
 partB :: Input -> OutputB
