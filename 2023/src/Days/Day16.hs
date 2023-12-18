@@ -2,7 +2,7 @@ module Days.Day16 (runDay) where
 
 {- ORMOLU_DISABLE -}
 import Data.List
-import Data.Map.Strict (Map)
+import Data.Map.Strict (Map, (!))
 import qualified Data.Map.Strict as Map
 import Data.Maybe
 import Data.Set (Set)
@@ -133,5 +133,61 @@ partA input = let
 
 
 ------------ PART B ------------
+type Vertex = (Coords, Direction)
+
+getNeighbors :: Input -> Coords -> Vertex -> [Vertex]
+getNeighbors graph bounds (coords, dir) = let
+  thisCell = Map.findWithDefault '.' coords graph
+  nextDirections = case thisCell of
+    '.' -> [dir]
+    '/' -> [hitMirror dir thisCell]
+    '\\' -> [hitMirror dir thisCell]
+    '-' -> hitSplitter dir thisCell
+    '|' -> hitSplitter dir thisCell
+    x -> error ("bad cell content: " ++ [x])
+  candidates = map (move coords) nextDirections
+  candidatePairs :: [(Coords, Direction)]
+  candidatePairs = zip candidates nextDirections
+  in filter (\(c1, d1) -> inBounds bounds c1) candidatePairs
+
+
+data TarjanState = TarjanState {
+    getLow :: Map Vertex Int
+  , getDisc :: Map Vertex Int
+  , getVisited :: Set Vertex
+  , getNextIndex :: Int
+  , getStack :: [Vertex]
+  , getStackSet :: Set Vertex
+  , getSCCs :: [[Vertex]]
+  }
+
+takeWhileOneMore :: (a -> Bool) -> [a] -> [a]
+takeWhileOneMore _ [] = []
+takeWhileOneMore f (x:xs) = case f x of
+  True -> x:(takeWhileOneMore f xs)
+  False -> [x]
+
+tarjan :: (Vertex -> [Vertex]) -> TarjanState -> Vertex -> TarjanState
+tarjan neighbors state u = let
+  newDisc = Map.insert u (getNextIndex state) $ getDisc state
+  newIndex = 1 + getNextIndex state
+  newStack = u:(getStack state)
+  newStackSet = Set.insert u (getStackSet state)
+  vs = neighbors u
+  stateBeforeRecursions = state { getDisc = newDisc, getNextIndex = newIndex, getStack = newStack, getStackSet = newStackSet}
+  maybeRecurseNeighbor :: TarjanState -> Vertex -> TarjanState
+  maybeRecurseNeighbor s0 v = if Map.member v (getDisc s0) then s0 else tarjan neighbors s0 v
+  stateAfterRecursions = foldl maybeRecurseNeighbor stateBeforeRecursions vs
+  unvisited = filter (\v -> Map.notMember v (getDisc state)) vs
+  visitedAndOnStack = filter (\v -> Map.member v (getDisc state) && Set.member v (getStackSet state)) vs
+  candidateLows = [(getLow stateAfterRecursions)!u] ++ (map (\v -> (getLow stateAfterRecursions)!v) unvisited) ++ (map (\v -> (getDisc stateAfterRecursions)!v) visitedAndOnStack)
+  newLowU = minimum candidateLows
+  newDiscU = (getDisc stateAfterRecursions)!u
+  thisSCC = if newLowU == newDiscU then takeWhileOneMore (/= u) (getStack stateAfterRecursions) else []
+  finalStack = drop (length thisSCC) (getStack stateAfterRecursions)
+  finalStackSet = foldl (flip Set.delete) (getStackSet stateAfterRecursions) thisSCC
+  newSCCs = if null thisSCC then (getSCCs stateAfterRecursions) else thisSCC:(getSCCs stateAfterRecursions)
+  in error "not yet"
+
 partB :: Input -> OutputB
 partB = error "Not implemented yet!"
