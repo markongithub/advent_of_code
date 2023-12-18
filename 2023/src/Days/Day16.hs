@@ -9,6 +9,7 @@ import Data.Set (Set)
 import qualified Data.Set as Set
 import Data.Vector (Vector)
 import qualified Data.Vector as Vec
+import Debug.Trace (traceShow)
 import qualified Util.Util as U
 
 import qualified Program.RunDay as R (runDay, Day)
@@ -151,15 +152,17 @@ getNeighbors graph bounds (coords, dir) = let
   in filter (\(c1, d1) -> inBounds bounds c1) candidatePairs
 
 
-data TarjanState = TarjanState {
-    getLow :: Map Vertex Int
-  , getDisc :: Map Vertex Int
-  , getVisited :: Set Vertex
+data TarjanState v = TarjanState {
+    getLow :: Map v Int
+  , getDisc :: Map v Int
+  , getVisited :: Set v
   , getNextIndex :: Int
-  , getStack :: [Vertex]
-  , getStackSet :: Set Vertex
-  , getSCCs :: [[Vertex]]
-  }
+  , getStack :: [v]
+  , getStackSet :: Set v
+  , getSCCs :: [[v]]
+  } deriving (Eq, Show)
+
+initialState = TarjanState Map.empty Map.empty Set.empty 0 [] Set.empty []
 
 takeWhileOneMore :: (a -> Bool) -> [a] -> [a]
 takeWhileOneMore _ [] = []
@@ -167,27 +170,53 @@ takeWhileOneMore f (x:xs) = case f x of
   True -> x:(takeWhileOneMore f xs)
   False -> [x]
 
-tarjan :: (Vertex -> [Vertex]) -> TarjanState -> Vertex -> TarjanState
-tarjan neighbors state u = let
+
+tarjan :: (Eq v, Ord v, Show v) => (v -> [v]) -> TarjanState v -> v -> TarjanState v
+tarjan neighbors state0 u = let
+  state = traceShow ("tarjan " ++ show u) state0
   newDisc = Map.insert u (getNextIndex state) $ getDisc state
+  newLow = Map.insert u (getNextIndex state) $ getLow state
   newIndex = 1 + getNextIndex state
   newStack = u:(getStack state)
   newStackSet = Set.insert u (getStackSet state)
   vs = neighbors u
-  stateBeforeRecursions = state { getDisc = newDisc, getNextIndex = newIndex, getStack = newStack, getStackSet = newStackSet}
-  maybeRecurseNeighbor :: TarjanState -> Vertex -> TarjanState
+  stateBeforeRecursions = state { getDisc = newDisc, getLow = newLow, getNextIndex = newIndex, getStack = newStack, getStackSet = newStackSet}
   maybeRecurseNeighbor s0 v = if Map.member v (getDisc s0) then s0 else tarjan neighbors s0 v
   stateAfterRecursions = foldl maybeRecurseNeighbor stateBeforeRecursions vs
   unvisited = filter (\v -> Map.notMember v (getDisc state)) vs
   visitedAndOnStack = filter (\v -> Map.member v (getDisc state) && Set.member v (getStackSet state)) vs
-  candidateLows = [(getLow stateAfterRecursions)!u] ++ (map (\v -> (getLow stateAfterRecursions)!v) unvisited) ++ (map (\v -> (getDisc stateAfterRecursions)!v) visitedAndOnStack)
+  findLowOrError v = Map.findWithDefault (error ("no low for " ++ show v)) v $ getLow stateAfterRecursions
+  lowsFromStack :: [Int]
+  lowsFromStack = map (\v -> ((getDisc stateAfterRecursions)!v)) visitedAndOnStack
+  candidateLows :: [Int]
+  candidateLows = [findLowOrError u] ++ (map findLowOrError unvisited) ++ lowsFromStack
+  newLowU :: Int
   newLowU = minimum candidateLows
   newDiscU = (getDisc stateAfterRecursions)!u
   thisSCC = if newLowU == newDiscU then takeWhileOneMore (/= u) (getStack stateAfterRecursions) else []
   finalStack = drop (length thisSCC) (getStack stateAfterRecursions)
   finalStackSet = foldl (flip Set.delete) (getStackSet stateAfterRecursions) thisSCC
-  newSCCs = if null thisSCC then (getSCCs stateAfterRecursions) else thisSCC:(getSCCs stateAfterRecursions)
-  in error "not yet"
+  finalSCCs = if null thisSCC then (getSCCs stateAfterRecursions) else thisSCC:(getSCCs stateAfterRecursions)
+  finalLow = Map.insert u newLowU (getLow stateAfterRecursions)
+  in stateAfterRecursions {getLow = finalLow, getStack = finalStack, getStackSet = finalStackSet, getSCCs = finalSCCs}
 
-partB :: Input -> OutputB
-partB = error "Not implemented yet!"
+testGraph = Map.fromList [
+    ('A', ['B'])
+  , ('B', ['C', 'D'])
+  , ('C', ['A'])
+  , ('D', ['E'])
+  , ('E', [])
+  ]
+testFunc v = testGraph!v
+testOutput = tarjan testFunc initialState 'A'
+
+-- partB :: Input -> TarjanState
+partB input = let
+  bounds = findBounds input
+  firstCoords = (0, snd bounds)
+  firstVertex = (firstCoords, East)
+  neighborFunc = getNeighbors input bounds
+  output = tarjan neighborFunc initialState firstVertex
+  justCoords = Set.toList $ Set.fromList $ map fst $ Map.keys $ getDisc output
+--  in testOutput
+  in (length justCoords, Map.size (getDisc output), length (getSCCs output))
