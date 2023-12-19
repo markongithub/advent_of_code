@@ -202,7 +202,8 @@ tarjan0 neighbors state0 u = let
 
 tarjan :: (Eq v, Ord v, Show v) => (v -> [v]) -> [v] -> [[v]]
 tarjan neighbors us = let
-  processOne s0 u = tarjan0 neighbors s0 u
+  discovered s0 u = Map.member u $ getDisc s0
+  processOne s0 u = if discovered s0 u then s0 else tarjan0 neighbors s0 u
   in getSCCs $ foldl processOne initialState us
 
 testGraph = Map.fromList [
@@ -214,7 +215,7 @@ testGraph = Map.fromList [
   ]
 
 testFunc v = testGraph!v
-testOutput = tarjan0 testFunc initialState 'A'
+testOutput = tarjan testFunc $ Map.keys testGraph
 
 valueCounts :: (Ord k, Show k) => [k] -> Map k Int
 valueCounts ls = let
