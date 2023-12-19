@@ -225,15 +225,15 @@ type SCCGraph = Map Int (Set Int)
 addEdge :: SCCGraph -> (Int, Int) -> SCCGraph
 addEdge graph (from, to) = Map.insertWith Set.union from (Set.singleton to) graph
 
-nodeToSCC :: [[Vertex]] -> (Map Int [Vertex], Map Vertex Int)
+nodeToSCC :: Ord v =>  [[v]] -> (Map Int [v], Map v Int)
 nodeToSCC sccls = let
   nodeListsWithSCCIndices = zip [0..] sccls
   nodesWithSCCIndices = concat $ map (\(scc, ls) -> zip ls (repeat scc)) nodeListsWithSCCIndices
-  nodeToSCCOutput :: Map Vertex Int
+--  nodeToSCCOutput :: Map v Int
   nodeToSCCOutput = Map.fromList nodesWithSCCIndices
   in (Map.fromList nodeListsWithSCCIndices, nodeToSCCOutput)
 
-makeSCCGraph :: (Vertex -> [Vertex]) -> (Map Int [Vertex], Map Vertex Int) -> SCCGraph
+makeSCCGraph :: Ord v => (v -> [v]) -> (Map Int [v], Map v Int) -> SCCGraph
 makeSCCGraph oldNeighbors (sccsByIndex, sccsByNode) = let
   addOneSCC graph i = let
     allDestNodes = concat $ map oldNeighbors (sccsByIndex!i)
@@ -249,7 +249,7 @@ depthFirstSearch neighbors visited v = let
   maybeRecurse s0 w = if Set.member w s0 then s0 else depthFirstSearch neighbors s0 w
   in foldl maybeRecurse nextVisited candidates
 
-reachable :: (Map Int [Vertex], Map Vertex Int) -> (Int -> [Int]) -> Vertex -> [Vertex]
+reachable :: Ord v => (Map Int [v], Map v Int) -> (Int -> [Int]) -> v -> [v]
 reachable (sccsByIndex, sccsByNode) sccNeighbors v = let
   mySCC = sccsByNode!v
   reachableSCCs = depthFirstSearch sccNeighbors Set.empty mySCC
