@@ -33,7 +33,7 @@ parseRows ss = let
   rowIndices = reverse [0..(length ss - 1)]
   rowsWithIndices = zip rowIndices ss
   parsedRows = concat $ map parseRow rowsWithIndices
-  in Map.fromList $ filter (\(_, c) -> c /= '.') parsedRows
+  in Map.fromList parsedRows
 
 inputParser :: Parser Input
 inputParser = do
@@ -131,8 +131,8 @@ partA :: Input -> OutputA
 partA input = let
   bounds = findBounds input
   firstCoords = (0, snd bounds)
-  in Set.size $ Set.fromList $ map fst $ Set.toList $ trackBeam input bounds Set.empty (firstCoords, East)
-
+  reachableCoords = Set.toList $ Set.fromList $ map fst $ Set.toList $ trackBeam input bounds Set.empty (firstCoords, East)
+  in length reachableCoords
 
 ------------ PART B ------------
 type Vertex = (Coords, Direction)
@@ -251,14 +251,16 @@ reachable (sccsByIndex, sccsByNode) sccNeighbors v = let
   reachableSCCs = depthFirstSearch sccNeighbors Set.empty mySCC
   in concat $ map (\scc -> sccsByIndex!scc) $ Set.toList reachableSCCs
 
--- partB :: Input -> TarjanState
+partB :: Input -> OutputB
 partB input = let
   bounds = findBounds input
   leftCoords = zip (repeat 0) [0..(snd bounds)]
   leftVertices = zip leftCoords (repeat East)
   topCoords = zip [0..(fst bounds)] (repeat $ snd bounds)
   topVertices = zip topCoords (repeat South)
-  startVertices = leftVertices ++ topVertices
+  rightVertices = zip (zip (repeat $ fst bounds) [0..(snd bounds)]) (repeat West)
+  bottomVertices = zip (zip [0..(fst bounds)] (repeat 0)) (repeat North)
+  startVertices = leftVertices ++ topVertices ++ bottomVertices ++ rightVertices
   neighborFunc = getNeighbors input bounds
   sccs = getSCCs $ foldl (tarjan neighborFunc) initialState startVertices
   (sccsByIndex, sccsByNode) = nodeToSCC sccs
@@ -268,10 +270,5 @@ partB input = let
   dedupCoords :: [Vertex] -> [Coords]
   dedupCoords vertices = Set.toList $ Set.fromList $ map fst vertices
   numReachableCoords v = length $ dedupCoords $ reachableNodes v
-  -- in maximum $ map numReachableCoords startVertices
-  -- justCoords = Set.toList $ Set.fromList $ map fst $ Map.keys $ getDisc output
-  countFromV v = Set.size $ Set.fromList $ map fst $ Set.toList $ trackBeam input bounds Set.empty v
-  in maximum $ map countFromV startVertices
-  -- in (length justCoords, Map.size (getDisc output), length (getSCCs output), valueCounts $ map length (getSCCs output))
-  -- in depthFirstSearch testFunc Set.empty 'A'
-  -- 8434 is too low
+  in maximum $ map numReachableCoords startVertices
+  
