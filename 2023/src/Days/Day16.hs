@@ -171,10 +171,9 @@ takeWhileOneMore f (x:xs) = case f x of
   True -> x:(takeWhileOneMore f xs)
   False -> [x]
 
-
-tarjan :: (Eq v, Ord v, Show v) => (v -> [v]) -> TarjanState v -> v -> TarjanState v
-tarjan neighbors state0 u = let
-  state = state0 -- traceShow ("tarjan " ++ show u) state0
+tarjan0 :: (Eq v, Ord v, Show v) => (v -> [v]) -> TarjanState v -> v -> TarjanState v
+tarjan0 neighbors state0 u = let
+  state = state0 -- traceShow ("tarjan0 " ++ show u) state0
   newDisc = Map.insert u (getNextIndex state) $ getDisc state
   newLow = Map.insert u (getNextIndex state) $ getLow state
   newIndex = 1 + getNextIndex state
@@ -182,7 +181,7 @@ tarjan neighbors state0 u = let
   newStackSet = Set.insert u (getStackSet state)
   vs = neighbors u
   stateBeforeRecursions = state { getDisc = newDisc, getLow = newLow, getNextIndex = newIndex, getStack = newStack, getStackSet = newStackSet}
-  maybeRecurseNeighbor s0 v = if Map.member v (getDisc s0) then s0 else tarjan neighbors s0 v
+  maybeRecurseNeighbor s0 v = if Map.member v (getDisc s0) then s0 else tarjan0 neighbors s0 v
   stateAfterRecursions = foldl maybeRecurseNeighbor stateBeforeRecursions vs
   unvisited = filter (\v -> Map.notMember v (getDisc state)) vs
   visitedAndOnStack = filter (\v -> Map.member v (getDisc state) && Set.member v (getStackSet state)) vs
@@ -201,6 +200,11 @@ tarjan neighbors state0 u = let
   finalLow = Map.insert u newLowU (getLow stateAfterRecursions)
   in stateAfterRecursions {getLow = finalLow, getStack = finalStack, getStackSet = finalStackSet, getSCCs = finalSCCs}
 
+tarjan :: (Eq v, Ord v, Show v) => (v -> [v]) -> [v] -> [[v]]
+tarjan neighbors us = let
+  processOne s0 u = tarjan0 neighbors s0 u
+  in getSCCs $ foldl processOne initialState us
+
 testGraph = Map.fromList [
     ('A', ['B'])
   , ('B', ['C', 'D'])
@@ -210,7 +214,7 @@ testGraph = Map.fromList [
   ]
 
 testFunc v = testGraph!v
-testOutput = tarjan testFunc initialState 'A'
+testOutput = tarjan0 testFunc initialState 'A'
 
 valueCounts :: (Ord k, Show k) => [k] -> Map k Int
 valueCounts ls = let
@@ -262,7 +266,7 @@ partB input = let
   bottomVertices = zip (zip [0..(fst bounds)] (repeat 0)) (repeat North)
   startVertices = leftVertices ++ topVertices ++ bottomVertices ++ rightVertices
   neighborFunc = getNeighbors input bounds
-  sccs = getSCCs $ foldl (tarjan neighborFunc) initialState startVertices
+  sccs = tarjan neighborFunc startVertices
   (sccsByIndex, sccsByNode) = nodeToSCC sccs
   sccGraph = makeSCCGraph neighborFunc (sccsByIndex, sccsByNode)
   sccNeighborFunc = (\v -> Set.toList $ sccGraph!v)
