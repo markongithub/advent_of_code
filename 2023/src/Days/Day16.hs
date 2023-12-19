@@ -126,6 +126,7 @@ findBounds input = let
   (allX, allY) = unzip allCoords
   in (maximum allX, maximum allY)
 
+
 partA :: Input -> OutputA
 partA input = let
   bounds = findBounds input
@@ -173,7 +174,7 @@ takeWhileOneMore f (x:xs) = case f x of
 
 tarjan :: (Eq v, Ord v, Show v) => (v -> [v]) -> TarjanState v -> v -> TarjanState v
 tarjan neighbors state0 u = let
-  state = traceShow ("tarjan " ++ show u) state0
+  state = state0 -- traceShow ("tarjan " ++ show u) state0
   newDisc = Map.insert u (getNextIndex state) $ getDisc state
   newLow = Map.insert u (getNextIndex state) $ getLow state
   newIndex = 1 + getNextIndex state
@@ -207,16 +208,70 @@ testGraph = Map.fromList [
   , ('D', ['E'])
   , ('E', [])
   ]
+
 testFunc v = testGraph!v
 testOutput = tarjan testFunc initialState 'A'
+
+valueCounts :: (Ord k, Show k) => [k] -> Map k Int
+valueCounts ls = let
+  addToMap m v = Map.insertWith (+) v 1 m
+  in foldl addToMap Map.empty ls
+
+type SCCGraph = Map Int (Set Int)
+addEdge :: SCCGraph -> (Int, Int) -> SCCGraph
+addEdge graph (from, to) = Map.insertWith Set.union from (Set.singleton to) graph
+
+nodeToSCC :: [[Vertex]] -> (Map Int [Vertex], Map Vertex Int)
+nodeToSCC sccls = let
+  nodeListsWithSCCIndices = zip [0..] sccls
+  nodesWithSCCIndices = concat $ map (\(scc, ls) -> zip ls (repeat scc)) nodeListsWithSCCIndices
+  nodeToSCCOutput :: Map Vertex Int
+  nodeToSCCOutput = Map.fromList nodesWithSCCIndices
+  in (Map.fromList nodeListsWithSCCIndices, nodeToSCCOutput)
+
+makeSCCGraph :: (Vertex -> [Vertex]) -> (Map Int [Vertex], Map Vertex Int) -> SCCGraph
+makeSCCGraph oldNeighbors (sccsByIndex, sccsByNode) = let
+  addOneSCC graph i = let
+    allDestNodes = concat $ map oldNeighbors (sccsByIndex!i)
+    allDestSCCs = Set.fromList $ map (\n -> sccsByNode!n) allDestNodes
+    in Map.insert i allDestSCCs graph
+  in foldl addOneSCC Map.empty (Map.keys sccsByIndex)
+
+-- this isn't tail-recursive and it doesn't do an ordering but let's try it for now
+depthFirstSearch :: Ord v => (v -> [v]) -> Set v -> v -> Set v
+depthFirstSearch neighbors visited v = let
+  candidates = neighbors v
+  nextVisited = Set.insert v visited
+  maybeRecurse s0 w = if Set.member w s0 then s0 else depthFirstSearch neighbors s0 w
+  in foldl maybeRecurse nextVisited candidates
+
+reachable :: (Map Int [Vertex], Map Vertex Int) -> (Int -> [Int]) -> Vertex -> [Vertex]
+reachable (sccsByIndex, sccsByNode) sccNeighbors v = let
+  mySCC = sccsByNode!v
+  reachableSCCs = depthFirstSearch sccNeighbors Set.empty mySCC
+  in concat $ map (\scc -> sccsByIndex!scc) $ Set.toList reachableSCCs
 
 -- partB :: Input -> TarjanState
 partB input = let
   bounds = findBounds input
-  firstCoords = (0, snd bounds)
-  firstVertex = (firstCoords, East)
+  leftCoords = zip (repeat 0) [0..(snd bounds)]
+  leftVertices = zip leftCoords (repeat East)
+  topCoords = zip [0..(fst bounds)] (repeat $ snd bounds)
+  topVertices = zip topCoords (repeat South)
+  startVertices = leftVertices ++ topVertices
   neighborFunc = getNeighbors input bounds
-  output = tarjan neighborFunc initialState firstVertex
-  justCoords = Set.toList $ Set.fromList $ map fst $ Map.keys $ getDisc output
---  in testOutput
-  in (length justCoords, Map.size (getDisc output), length (getSCCs output))
+  sccs = getSCCs $ foldl (tarjan neighborFunc) initialState startVertices
+  (sccsByIndex, sccsByNode) = nodeToSCC sccs
+  sccGraph = makeSCCGraph neighborFunc (sccsByIndex, sccsByNode)
+  sccNeighborFunc = (\v -> Set.toList $ sccGraph!v)
+  reachableNodes v = reachable (sccsByIndex, sccsByNode) sccNeighborFunc v
+  dedupCoords :: [Vertex] -> [Coords]
+  dedupCoords vertices = Set.toList $ Set.fromList $ map fst vertices
+  numReachableCoords v = length $ dedupCoords $ reachableNodes v
+  -- in maximum $ map numReachableCoords startVertices
+  -- justCoords = Set.toList $ Set.fromList $ map fst $ Map.keys $ getDisc output
+  countFromV v = Set.size $ Set.fromList $ map fst $ Set.toList $ trackBeam input bounds Set.empty v
+  in maximum $ map countFromV startVertices
+  -- in (length justCoords, Map.size (getDisc output), length (getSCCs output), valueCounts $ map length (getSCCs output))
+  -- in depthFirstSearch testFunc Set.empty 'A'
+  -- 8434 is too low
