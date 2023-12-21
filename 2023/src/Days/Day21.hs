@@ -72,11 +72,6 @@ findDeleteMinFilter0 :: (Ord v) => (v -> Bool) -> [v] -> Maybe (v, Set v)
 findDeleteMinFilter0 f [] = Nothing
 findDeleteMinFilter0 f (x:xs) = if f x then Just (x, Set.fromList xs) else findDeleteMinFilter0 f xs
 
-cacheOrNot :: (Ord v) => v -> DijkstraOutput v -> (Weight, v) -> DijkstraOutput v
-cacheOrNot source cache (w, v) = let
-  (oldW, _) = Map.findWithDefault (maxBound, undefined) v cache
-  in if w < oldW then Map.insert v (w, Just source) cache else cache
-
 dijkstraWithCutoff0 :: (Ord v, Show v) => NeighborFunc v -> Weight -> DijkstraQueue v -> DijkstraOutput v -> v -> DijkstraOutput v
 dijkstraWithCutoff0 neighbors maxWeight firstQ cache current
 --  | traceShow (current, Set.size firstQ, Map.size cache) False = undefined
@@ -92,7 +87,8 @@ dijkstraWithCutoff0 neighbors maxWeight firstQ cache current
     -- filterResult :: Maybe (v, Set v)
     filterResult = findDeleteMinFilter isRelevant beforeFiltering
     ((_, nextNode), nextQ) = fromJust filterResult
-    nextCache = foldl (cacheOrNot current) cache $ filter isRelevant weightedNeighbors
+    addToCache cache0 (ww, w) = Map.insert w (ww, Just current) cache0 
+    nextCache = foldl addToCache cache $ filter isRelevant weightedNeighbors
     recurse = dijkstraWithCutoff0 neighbors maxWeight nextQ nextCache nextNode
 
 dijkstraWithCutoff :: (Ord v, Show v) => NeighborFunc v -> Weight -> v -> DijkstraOutput v
