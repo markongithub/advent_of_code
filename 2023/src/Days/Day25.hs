@@ -51,13 +51,13 @@ mergeEdgeWeights xs ys = let
   yMap = Map.fromListWith (+) ys
   in Map.toList $ Map.unionWith (+) xMap yMap
 
-graphToEdges :: Graph String -> [(String, String, Weight)]
+graphToEdges :: Graph a -> [(a, a, Weight)]
 graphToEdges graph = let
   pairs = Map.toList graph
   pairToEdges (source, dests) = map (\(dest, weight) -> (source, dest, weight)) dests
   in concat $ map pairToEdges pairs
 
-relabelEdge :: String -> String -> String -> (String, String, Weight) -> Maybe (String, String, Weight)
+relabelEdge :: (Eq a) => a -> a -> a -> (a, a, Weight) -> Maybe (a, a, Weight)
 relabelEdge old1 old2 new (from, to, weight)
   | fromOld && toOld = Nothing
   | fromOld = Just (new, to, weight)
@@ -67,14 +67,14 @@ relabelEdge old1 old2 new (from, to, weight)
     fromOld = from == old1 || from == old2
     toOld = to == old1 || to == old2
 
-mergeTwoVertices :: Map String [(String, Weight)] -> (String, String) -> Map String [(String, Weight)]
+mergeTwoVertices :: Ord a => Graph [a] -> ([a], [a]) -> Graph [a]
 mergeTwoVertices oldMap (v1, v2) = let
   newLabel = v1 ++ v2
   oldEdges = graphToEdges oldMap
   newEdges = catMaybes $ map (relabelEdge v1 v2 newLabel) oldEdges
-  insertEdgeTemp :: Map (String, String) Weight -> (String, String, Weight) -> Map (String, String) Weight
+  -- insertEdgeTemp :: Map (String, String) Weight -> (String, String, Weight) -> Map (String, String) Weight
   insertEdgeTemp m (from, to, weight) = Map.insertWith (+) (from, to) weight m
-  tempEdges :: Map (String, String) Weight
+  -- tempEdges :: Map (String, String) Weight
   tempEdges = foldl insertEdgeTemp Map.empty newEdges
   betterEdges = map (\((a, b), c) -> (a, b, c)) $ Map.toList tempEdges
   in graphFromEdges betterEdges
@@ -91,7 +91,7 @@ minimumCutPhase0 neighbors unqueued queue0
   | unqueuedSize == 0 && queueSize == 2 = endPhase
   | otherwise = processNext
   where
-    queue = traceShow ("mcp0 unqueued=" ++ show unqueued ++ " queue=" ++ show queue0) queue0
+    queue = queue0 -- traceShow ("mcp0 unqueued=" ++ show unqueued ++ " queue=" ++ show queue0) queue0
     queueSize = Set.size queue
     unqueuedSize = Set.size unqueued
     ((_, v), queue2) = Set.deleteFindMax queue
@@ -119,21 +119,24 @@ minimumCutPhase neighbors vertices start = let
   initialQueue = Set.singleton (0, start)
   in minimumCutPhase0 neighbors (Set.delete start vertices) initialQueue
 
-minimumCut0 :: Map String [(String, Weight)] -> String ->  (String, String, Int) -> (String, String, Int)
-minimumCut0 graph start (bestS, bestT, bestWeight) = let
-  dumbFunc :: String -> [(String, Weight)]
-  dumbFunc v = Map.findWithDefault (error ("you fail as usual but in minimumCut0 this time: " ++ v)) v graph
+minimumCut0 :: Graph [String] -> [String] -> Weight -> ([String], [String], Int) -> ([String], [String], Int)
+minimumCut0 graph start cutoff (bestS, bestT, bestWeight) = let
+  dumbFunc :: [String] -> [([String], Weight)]
+  dumbFunc v = Map.findWithDefault (error ("you fail as usual but in minimumCut0 this time: " ++ show v)) v graph
+  verticesIn = Map.size graph
   (s, t) = minimumCutPhase dumbFunc (Map.keysSet graph) start
   weightsFromT :: Int
   weightsFromT = sum $ map snd $ dumbFunc t
   newBest0 = if weightsFromT < bestWeight then (s, t, weightsFromT) else (bestS, bestT, bestWeight)
-  newBest = traceShow ("last s&t are " ++ show (s, t, weightsFromT) ++ " so new best is " ++ show newBest0) newBest0
+  (_, newBestT, newBestWeight) = newBest0
+  newBest = traceShow ("starting with " ++ show verticesIn ++ " vertices, last s&t are " ++ show (length t, weightsFromT) ++ " so new best is " ++ show (length newBestT, newBestWeight)) newBest0
   newGraph = mergeTwoVertices graph (s, t)
-  recurse = minimumCut0 newGraph start newBest
-  in if Map.size graph < 4 then newBest else recurse
+  recurse = minimumCut0 newGraph start cutoff newBest
+  shouldTerminate = verticesIn <= 3 || newBestWeight <= cutoff
+  in if shouldTerminate then newBest else recurse
 
-minimumCut :: Map String [(String, Weight)] -> String -> (String, String, Int)
-minimumCut graph start = minimumCut0 graph start (undefined, undefined, maxBound)
+minimumCut :: Graph [String] -> [String] -> Weight -> ([String], [String], Int)
+minimumCut graph start cutoff = minimumCut0 graph start cutoff (undefined, undefined, maxBound)
 
 -- https://dl.acm.org/doi/pdf/10.1145/263867.263872
 testEdges = [
@@ -162,11 +165,30 @@ graphFromEdges edges = let
 
 testGraph = graphFromEdges $ addReverseEdges testEdges
 testNeighbors v = Map.findWithDefault (error "you fail as usual") v testGraph
-testResult = minimumCut testGraph "2"
+testResult = minimumCut (makeMCGraph testGraph) ["2"] 1
 
+addUniformWeight :: [(a, [a])] -> [(a, [(a, Weight)])]
+addUniformWeight ls = let
+  addWeightsToOneList (source, dests) = (source, zip dests (repeat 1))
+  in map addWeightsToOneList ls
+
+makeMCGraph :: Ord a => Graph a -> Graph [a]
+makeMCGraph graph = let
+  pairs = Map.toList graph
+  updateDest (dest, weight) = ([dest], weight)
+  updatePair (source, dests) = ([source], map updateDest dests)
+  in Map.fromList $ map updatePair pairs
 
 -- partA :: Input -> OutputA
-partA input = testResult
+partA input = let
+  normalGraph = graphFromEdges $ addReverseEdges $ addUniformWeight input
+  numVertices = Map.size normalGraph
+  graph = makeMCGraph normalGraph
+  start = [fst $ head input]
+  (_, oneSide, _ ) = minimumCut graph start 3
+  lengthOtherSide = numVertices - (length oneSide)
+  in (length oneSide) * lengthOtherSide
+
 
 ------------ PART B ------------
 partB :: Input -> OutputB
