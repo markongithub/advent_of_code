@@ -7,6 +7,7 @@ import qualified Data.Map.Strict as Map
 import Data.Maybe
 import Data.Set (Set)
 import qualified Data.Set as Set
+import Data.Text (pack)
 import Data.Vector (Vector)
 import qualified Data.Vector as Vec
 import qualified Util.Util as U
@@ -110,5 +111,104 @@ partA input = let
   in length evens
 
 ------------ PART B ------------
-partB :: Input -> OutputB
-partB = error "Not implemented yet!"
+
+findNeighborsInfinite :: Input -> Coords -> NeighborFunc Coords
+findNeighborsInfinite graph (width, height) coords = let
+  fixCoords (x0, y0) = (x0 `mod` width, y0 `mod` height)
+  candidates = [north coords, south coords, east coords, west coords]
+  isValidNeighbor cc = case Map.lookup (fixCoords cc) graph of
+    Just c -> c /= '#'
+    Nothing -> error ("why are we looking up " ++ (show (cc, fixCoords cc)))
+  in zip (repeat 1) $ filter isValidNeighbor candidates
+
+
+makePartBSSSP :: Input -> Weight -> DijkstraOutput Coords
+makePartBSSSP input steps = let
+  start = getStartNode input
+  width = 1 + (maximum $ map fst $ Map.keys input)
+  height = 1 + (maximum $ map snd $ Map.keys input)
+  sssp = dijkstraWithCutoff (findNeighborsInfinite input (width, height)) steps start
+  in sssp
+
+addDistance :: (Weight, Weight) -> Int -> Coords ->  Coords
+addDistance (width, height) multiple (x, y) = (x + (multiple * width), y + (multiple * height))
+
+lookupWithError :: (Ord k, Show k) => k -> Map k a -> a
+lookupWithError k m = case Map.lookup k m of
+  Just result -> result
+  Nothing -> error ("missing key: " ++ show k)
+
+totalEvensOdds :: DijkstraOutput Coords -> (Int,Int,Int)
+totalEvensOdds sssp = let
+  evens = Map.filter (\p -> fst p `mod` 2 == 0) sssp
+  odds = Map.filter (\p -> fst p `mod` 2 == 1) sssp
+  in (Map.size sssp, Map.size evens, Map.size odds)
+
+parseFile :: String -> IO Input
+parseFile filename = do
+  contents <- readFile filename
+  case (parseOnly inputParser $ pack contents) of
+    Left e -> error e
+    Right i -> return i
+
+-- partB :: Input -> OutputB
+partB input = let
+  start = getStartNode input
+  width = 1 + (maximum $ map fst $ Map.keys input)
+  height = 1 + (maximum $ map snd $ Map.keys input)
+  exploreBaseMap = dijkstraWithCutoff (findNeighbors input) maxBound start
+  reachableNodes = Map.keys exploreBaseMap
+  horizontalScreensAway = 2
+  nodesToCheck = map (addDistance (width, 0) horizontalScreensAway) reachableNodes
+  infiniteSSSP = makePartBSSSP input 43
+  evens = Map.filter (\p -> fst p `mod` 2 == 0) infiniteSSSP
+  odds = Map.filter (\p -> fst p `mod` 2 == 1) infiniteSSSP
+  -- in (Map.size infiniteSSSP, Map.size evens, Map.size odds)
+  -- results = filter (\p -> fst p == 14) $ Map.elems exploreBaseMap
+  results = map (\n -> fst (lookupWithError n infiniteSSSP)) nodesToCheck
+  in (minimum results, maximum results)
+-- it takes 0-14 to explore the base map
+--
+-- (22,40) to go 2 horizontal screens away
+-- (33,51) to go 3 horizontal screens away
+-- it takes 12,32 to go 1 diagonal screen away
+-- it takes 34,54 to go 2 diagonal screens away
+-- it takes 56,76 to go 3 diagonal screens away
+-- WH = width + height
+-- in each block of the sample input I can reach 81 squares - 42 with an even number
+-- of steps, 39 with an odd number
+-- for every 11 steps I add, I increase my reach by 81/42/39 IN EVERY DIRECTION
+-- 1^2 -> 3^2 -> 5^2 no this is wrong
+{-
+x
+      x
+then xxx
+      x
+       
+       x
+      xxx
+then xxxxx
+      xxx
+       x
+1 then 1+3+1 then 1+3+5+3+1 then 1+3+5+7+5+3+1
+                  3+5            7 + 5
+1          4        8              12
+    Sum of 4 
+    12 24 40
+    3 6 10 
+-- 18 steps to fill the 131
+-- after 22 you BEGIN the 13531 which has 13 squares
+
+-- 40 steps to form the 13531 = 13*(81/42/39) = 1 + 4*3 = 1 + 4 * ((2^2 + 2) / 2)
+-- 33 to begin the 1357531
+-- 51 steps to finish the 1357531 = 25*(81/42/39) = 1 + 4 * ((3^2 + 3) /2)
+-- 44 you will begin the 
+-- = 18 + 
+-- 18 + (4*11) steps to fill 1 + 4 * ((4*4 + 4) / 2)
+-- 18 + (452*11) = 4990 = 1 + 4 * (452 * 453) /2 = 1 + 2*452*453
+-- 
+-- to explore the initial 
+-- in 32 steps I can go (1179,605,574)
+-- in 43 steps I can go (2253,1107,1146)
+-- in 54 steps I can go (3658,1853,1805)
+-}
