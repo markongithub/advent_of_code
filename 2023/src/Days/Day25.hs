@@ -5,6 +5,8 @@ import Data.List
 import Data.Map.Strict (Map, (!))
 import qualified Data.Map.Strict as Map
 import Data.Maybe
+import Data.PSQueue (PSQ, Binding(..))
+import qualified Data.PSQueue as PSQueue
 import Data.Set (Set)
 import qualified Data.Set as Set
 import Data.Vector (Vector)
@@ -85,38 +87,38 @@ mergeTwoVertices oldMap (v1, v2) = let
 -- visited 2347 queue 2/1 2/5 2+1/6 2+3/8
 -- visited 23478 queue 2/1 2/5 3/6
 -- visited 234786 queue 2/1 2+3/5
-minimumCutPhase0 :: (Ord a, Show a) => NeighborFunc a -> Set a -> Set (Weight, a) -> (a, a)
+minimumCutPhase0 :: (Ord a, Show a) => NeighborFunc a -> Set a -> PSQ a Weight -> (a, a)
 minimumCutPhase0 neighbors unqueued queue0
   | unqueuedSize == 0 && queueSize < 2 = error "how did the queue get empty?"
   | unqueuedSize == 0 && queueSize == 2 = endPhase
   | otherwise = processNext
   where
     queue = queue0 -- traceShow ("mcp0 unqueued=" ++ show unqueued ++ " queue=" ++ show queue0) queue0
-    queueSize = Set.size queue
+    queueSize = PSQueue.size queue
     unqueuedSize = Set.size unqueued
-    ((_, v), queue2) = Set.deleteFindMax queue
+    -- we are checking size first so this should never be Nothing
+    Just ((v :-> _), queue2) = PSQueue.minView queue
     unqueued2 = unqueued -- sorry
-    -- for each node in the queue, if it has v as a neighbor, we need to increase its
-    -- key by the weight to v
-    edgesToV w = filter (\p -> fst p == v) $ neighbors w
-    weightToAdd w = sum $ map snd $ edgesToV w
-    updateKey (k, w) = (k + weightToAdd w, w)
-    queue3 = Set.map updateKey queue2
+    -- for each of v's neighbors, if they are in the queue, we update their
+    -- priority
     fromV = neighbors v
+    updateQueueForEdge oldQ (dest, weight) = PSQueue.adjust (\x -> x - weight) dest oldQ
+    queue3 = foldl updateQueueForEdge queue2 fromV
     newNodes = filter (\p -> Set.member (fst p) unqueued2) fromV
     unqueued3 = foldl (flip Set.delete) unqueued2 (map fst newNodes)
-    swap (x, y) = (y, x)
-    queue4 = Set.union queue3 $ Set.fromList $ map swap newNodes
+    enqueue oldQ (dest, weight) = PSQueue.insert dest (0 - weight) oldQ
+    queue4 = foldl enqueue queue3 newNodes
     processNext = minimumCutPhase0 neighbors unqueued3 queue4
     -- the remaining statements are evaluated when queueSize == 2
-    [t, s] = Set.toList queue
-    endPhase = (snd s, snd t)
+    Just ((s :-> _), queueOfT) = PSQueue.minView queue
+    Just ((t :-> _), _) = PSQueue.minView queueOfT
+    endPhase = (s, t)
 
 minimumCutPhase :: (Ord a, Show a) => NeighborFunc a -> Set a -> a -> (a, a)
 -- come back to this: we can probably just pass in a graph but we haven't
 -- thought out the graph types yet
 minimumCutPhase neighbors vertices start = let
-  initialQueue = Set.singleton (0, start)
+  initialQueue = PSQueue.singleton start 0
   in minimumCutPhase0 neighbors (Set.delete start vertices) initialQueue
 
 minimumCut0 :: Graph [String] -> [String] -> Weight -> ([String], [String], Int) -> ([String], [String], Int)

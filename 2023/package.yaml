@@ -30,6 +30,7 @@ dependencies:
 - text
 - mtl
 - vector
+- PSQueue
 
 library:
   source-dirs: src
