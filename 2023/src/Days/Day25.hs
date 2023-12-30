@@ -102,12 +102,13 @@ minimumCutPhase0 neighbors unqueued queue0
     -- for each of v's neighbors, if they are in the queue, we update their
     -- priority
     fromV = neighbors v
-    updateQueueForEdge oldQ (dest, weight) = PSQueue.adjust (\x -> x - weight) dest oldQ
-    queue3 = foldl updateQueueForEdge queue2 fromV
-    newNodes = filter (\p -> Set.member (fst p) unqueued2) fromV
-    unqueued3 = foldl (flip Set.delete) unqueued2 (map fst newNodes)
-    enqueue oldQ (dest, weight) = PSQueue.insert dest (0 - weight) oldQ
-    queue4 = foldl enqueue queue3 newNodes
+    unqueued3 = foldl (flip Set.delete) unqueued2 (map fst fromV)
+    updateMaybe weight addIfMissing maybeP = case (maybeP, addIfMissing) of
+      (Just p, _) -> Just (p - weight)
+      (Nothing, True) -> Just (0 - weight)
+      (Nothing, False) -> Nothing
+    insertOrUpdate oldQ (dest, weight) = PSQueue.alter (updateMaybe weight (Set.member dest unqueued2)) dest oldQ
+    queue4 = foldl insertOrUpdate queue2 fromV
     processNext = minimumCutPhase0 neighbors unqueued3 queue4
     -- the remaining statements are evaluated when queueSize == 2
     Just ((s :-> _), queueOfT) = PSQueue.minView queue
