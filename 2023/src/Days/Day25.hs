@@ -98,18 +98,16 @@ minimumCutPhase0 neighbors unqueued queue0
     unqueuedSize = Set.size unqueued
     -- we are checking size first so this should never be Nothing
     Just ((v :-> _), queue2) = PSQueue.minView queue
-    unqueued2 = unqueued -- sorry
     -- for each of v's neighbors, if they are in the queue, we update their
     -- priority
     fromV = neighbors v
-    unqueued3 = foldl (flip Set.delete) unqueued2 (map fst fromV)
     updateMaybe weight addIfMissing maybeP = case (maybeP, addIfMissing) of
       (Just p, _) -> Just (p - weight)
       (Nothing, True) -> Just (0 - weight)
       (Nothing, False) -> Nothing
-    insertOrUpdate oldQ (dest, weight) = PSQueue.alter (updateMaybe weight (Set.member dest unqueued2)) dest oldQ
-    queue4 = foldl insertOrUpdate queue2 fromV
-    processNext = minimumCutPhase0 neighbors unqueued3 queue4
+    insertOrUpdate (oldQ, oldUnqd) (dest, weight) = (PSQueue.alter (updateMaybe weight (Set.member dest oldUnqd)) dest oldQ, Set.delete dest oldUnqd)
+    (queue4, unqueued2) = foldl insertOrUpdate (queue2, unqueued) fromV
+    processNext = minimumCutPhase0 neighbors unqueued2 queue4
     -- the remaining statements are evaluated when queueSize == 2
     Just ((s :-> _), queueOfT) = PSQueue.minView queue
     Just ((t :-> _), _) = PSQueue.minView queueOfT
