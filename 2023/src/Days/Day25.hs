@@ -96,18 +96,20 @@ minimumCutPhase0 neighbors unqueued queue0
     queue = queue0 -- traceShow ("mcp0 unqueued=" ++ show unqueued ++ " queue=" ++ show queue0) queue0
     queueSize = PSQueue.size queue
     unqueuedSize = Set.size unqueued
-    -- we are checking size first so this should never be Nothing
+    -- we are checking queue size first so this should never be Nothing
     Just ((v :-> _), queue2) = PSQueue.minView queue
-    -- for each of v's neighbors, if they are in the queue, we update their
-    -- priority
     fromV = neighbors v
+    -- for each of v's neighbors...
+    -- if the neighbor is in the queue, update its priority
+    -- if it's never been in the queue, add it
+    -- if it was in the queue before and added to "A", do nothing
     updateMaybe weight addIfMissing maybeP = case (maybeP, addIfMissing) of
       (Just p, _) -> Just (p - weight)
       (Nothing, True) -> Just (0 - weight)
       (Nothing, False) -> Nothing
     insertOrUpdate (oldQ, oldUnqd) (dest, weight) = (PSQueue.alter (updateMaybe weight (Set.member dest oldUnqd)) dest oldQ, Set.delete dest oldUnqd)
-    (queue4, unqueued2) = foldl insertOrUpdate (queue2, unqueued) fromV
-    processNext = minimumCutPhase0 neighbors unqueued2 queue4
+    (queue3, unqueued2) = foldl insertOrUpdate (queue2, unqueued) fromV
+    processNext = minimumCutPhase0 neighbors unqueued2 queue3
     -- the remaining statements are evaluated when queueSize == 2
     Just ((s :-> _), queueOfT) = PSQueue.minView queue
     Just ((t :-> _), _) = PSQueue.minView queueOfT
